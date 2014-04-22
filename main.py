@@ -65,7 +65,7 @@ def distance(M1, M2):
     M2 = np.append(M2, np.zeros(n-len(M2)))
     return np.sqrt(np.dot(M1-M2, M1-M2))
 
-def regression(mset, Eref, sigma, lamda):
+def regression(mset, Eref, sigma, lamda, kernel="gaussian"):
     # lamda for regularization, sigma for gaussian damping
     nset = len(mset) # number of training set
     M = set_all_coulumb_matrix(mset)
@@ -74,12 +74,22 @@ def regression(mset, Eref, sigma, lamda):
     K = np.zeros((nset, nset))
     for i in range(nset):
         for j in range(nset):
-            K[i, j] = np.exp(- distance(M[i, :], M[j, :])**2 / (2. * sigma**2))
+            K[i, j] = get_kernel(distance(M[i, :], M[j, :]), sigma, kernel=kernel)
         K[i, i] += lamda
     print "Finished kernel"
 
     alpha = np.dot(np.linalg.inv(K), Eref) # not sure about the order
     return M, alpha
+
+
+def get_kernel(d, sigma, kernel="gaussian"):
+    if kernel == "gaussian":
+        return np.exp(- d**2 / (2.*sigma**2))
+    elif kernel == "laplacian":
+        return np.exp(-np.abs(d)/sigma)
+    else:
+        print "kernel not defined"
+        XX
 
 def estimation(mtrain, Etrain, M, alpha, sigma, mcross=None, Ecross=None):
     nj = len(mtrain)
@@ -127,8 +137,8 @@ def choose_lamda_sigma(mtrain, mcross):
     Etrain = get_Eref(mtrain)
     Ecross = get_Eref(mcross)
 
-    for sigma in (100, 90, 80, 70, 60, ): #np.linspace(1,5,4):
-        for lamda in (0.1, 0.01, ): #np.linspace(0.5, 2.5, 4):
+    for sigma in (80, ): #np.linspace(1,5,4):
+        for lamda in (0.1, ): #np.linspace(0.5, 2.5, 4):
             M, alpha = regression(mtrain, Etrain, sigma=sigma, lamda=lamda)
             MAEtrain =  estimation(mtrain, Etrain, M, alpha, sigma)
             MAEcross = estimation(mtrain, Etrain, M, alpha, sigma, mcross, Ecross)
