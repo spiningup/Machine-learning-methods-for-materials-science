@@ -3,6 +3,7 @@ from ase.units import Bohr
 #from ase.io import read
 import json
 import random
+from pylab import *
 
 class Atoms:
     def __init__(self, item=None):
@@ -12,6 +13,7 @@ class Atoms:
             self.natoms = int(item["numatom"])
             self.cell = np.array(item["finalbasismat"])
             self.formula = item["formula"]
+            self.Eref = float(item["energyperatom"])
 
 
 def set_coulumb_matrix(atoms):
@@ -42,14 +44,8 @@ def set_coulumb_matrix(atoms):
     
     return E
 
-def distance(M1, M2):
-    n = max(len(M1), len(M2))
-    M1 = np.append(M1, np.zeros(n-len(M1)))
-    M2 = np.append(M2, np.zeros(n-len(M2)))
-    return np.sqrt(np.dot(M1-M2, M1-M2))
+def set_all_coulumb_matrix(mset):
 
-def regression(mset, Eref, sigma, lamda):
-    # lamda for regularization, sigma for gaussian damping
     nset = len(mset) # number of training set
     max_natoms = 0   # maximum number of atoms in the training set
     for atoms in mset:
@@ -59,11 +55,24 @@ def regression(mset, Eref, sigma, lamda):
     for i, atoms in enumerate(mset):
         Mtmp = set_coulumb_matrix(atoms)
         M[i,:len(Mtmp)] = Mtmp[:]
+    return M
+
+
+
+def distance(M1, M2):
+    n = max(len(M1), len(M2))
+    M1 = np.append(M1, np.zeros(n-len(M1)))
+    M2 = np.append(M2, np.zeros(n-len(M2)))
+    return np.sqrt(np.dot(M1-M2, M1-M2))
+
+def regression(mset, Eref, sigma, lamda):
+    # lamda for regularization, sigma for gaussian damping
+    nset = len(mset) # number of training set
+    M = set_all_coulumb_matrix(mset)
     print "Finished coulomb matrix"
 
     K = np.zeros((nset, nset))
     for i in range(nset):
-#        print i
         for j in range(nset):
             K[i, j] = np.exp(- distance(M[i, :], M[j, :])**2 / (2. * sigma**2))
         K[i, i] += lamda
@@ -72,47 +81,98 @@ def regression(mset, Eref, sigma, lamda):
     alpha = np.dot(np.linalg.inv(K), Eref) # not sure about the order
     return M, alpha
 
-def estimation(mset, Eref, alpha, M, sigma):
-    nset = len(mset)
+def estimation(mtrain, Etrain, M, alpha, sigma, mcross=None, Ecross=None):
+    nj = len(mtrain)
+    if mcross is not None:
+        ni = len(mcross)
+        Eref = Ecross
+        Mref = set_all_coulumb_matrix(mcross)
+    else:
+        ni = nj
+        Eref = Etrain
+        Mref = M
     MAE = 0
-    for i in range(nset):
+    for i in range(ni):
         Eest = 0 # estimation for set number i
-        for j in range(nset):
-            Eest += alpha[j] * np.exp(-distance(M[i, :], M[j, :])**2 / (2. * sigma**2)) 
+        for j in range(nj):
+            Eest += alpha[j] * np.exp(-distance(Mref[i, :], M[j, :])**2 / (2. * sigma**2)) 
         MAE += np.abs(Eest - Eref[i])
-#        print mset[i].formula, Eest, Eref[i], Eest - Eref[i]
+#        print Eest, Eref[i], Eest - Eref[i]
     return MAE
 
 def read_json(filename = "data.json"):
     d = json.load(open(filename, 'r'))
-    Eref = []
     mset = []
     for i, item in enumerate(d):
         atoms = Atoms(item)
         if i > 0 and atoms.formula == mset[-1].formula: continue
         mset.append(atoms)
-        Eref.append(float(item["energyperatom"])) #* atoms.natoms
     del d
 
-    return mset, Eref
+    return mset[:len(mset)//5*5] # return set that is divisable by 5, since its 5 fold 
 
-def choose_lamda_sigma():
-    mset, Eref = read_json()
-    for sigma in (0.1, ): #np.linspace(1,5,4):
-        for lamda in (0.005,): #np.linspace(0.5, 2.5, 4):
-            M, alpha = regression(mset, Eref, sigma=sigma, lamda=lamda)
-            MAE = estimation(mset, Eref, sigma=sigma, alpha=alpha, M=M)
-            print sigma, lamda, min(alpha), max(alpha), MAE / len(mset)
+def get_Eref(mset):
+    Eref = []
+    for atom in mset:
+        Eref.append(atom.Eref)
+    return Eref
 
-
-if __name__ == "__main__":
-    mset, Eref = read_json()
-    stratified_sampling(mset, Eref)
-
-# examine histgram
-    for i in range(len(Eref)):
-        if Eref[i] < -10:
-            print mset[i].formula, Eref[i]
-    from pylab import *
+def plot_histgram(mset):
+    Eref = get_Eref(mset)
     hist(Eref, 20)
     show()
+
+
+def choose_lamda_sigma(mtrain, mcross):
+    Etrain = get_Eref(mtrain)
+    Ecross = get_Eref(mcross)
+
+    for sigma in (100, 90, 80, 70, 60, ): #np.linspace(1,5,4):
+        for lamda in (0.1, 0.01, ): #np.linspace(0.5, 2.5, 4):
+            M, alpha = regression(mtrain, Etrain, sigma=sigma, lamda=lamda)
+            MAEtrain =  estimation(mtrain, Etrain, M, alpha, sigma)
+            MAEcross = estimation(mtrain, Etrain, M, alpha, sigma, mcross, Ecross)
+
+            print sigma, lamda, MAEtrain / len(mtrain), MAEcross / len(mcross)
+
+
+def get_testset(mset):
+    mtest = []
+    i = 0
+    while i < len(mset):
+        idx = np.random.randint(0, 5)
+        mtest.append(mset[i+idx])
+        mset.pop(i+idx)
+        i += 4
+        
+    return mtest, mset
+
+def get_train_validation_set(mset):
+    mcross = []
+    mtrain = mset[:]
+    i = 0
+    while i < len(mtrain):
+        idx = np.random.randint(0, 4)
+        mcross.append(mtrain[i+idx])
+        mtrain.pop(i+idx)
+        i += 3
+        
+    return mtrain, mcross, mset # mset is a sum of mtrain and mcross
+    
+    
+
+if __name__ == "__main__":
+    mset = read_json()
+    mtest, mset = get_testset(mset)
+    mtrain, mcross, mset = get_train_validation_set(mset)
+
+    choose_lamda_sigma(mtrain, mcross)
+
+    
+# examine histgram
+#    for i in range(len(Eref)):
+#        if Eref[i] < -10:
+#            print mset[i].formula, Eref[i]
+#    from pylab import *
+#    hist(Eref, 20)
+#    show()
