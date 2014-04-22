@@ -8,12 +8,13 @@ from pylab import *
 class Atoms:
     def __init__(self, item=None):
         if item is not None:
-            self.Z = np.array(item["atommasses_amu"])
+#            self.Z = np.array(item["atommasses_amu"])
+            self.Z = np.array(item["atomvalences"])
             self.positions = np.array(item["finalcartposmat"])
             self.natoms = int(item["numatom"])
             self.cell = np.array(item["finalbasismat"])
             self.formula = item["formula"]
-            self.Eref = float(item["energyperatom"])
+            self.Eref = float(item["energynoentrp"]) / self.natoms
 
 
 def set_coulumb_matrix(atoms):
@@ -137,7 +138,7 @@ def choose_lamda_sigma(mtrain, mcross):
     Etrain = get_Eref(mtrain)
     Ecross = get_Eref(mcross)
 
-    for sigma in (60, ): #np.linspace(1,5,4):
+    for sigma in (15, 20): #np.linspace(1,5,4):
         for lamda in (0.1, ): #np.linspace(0.5, 2.5, 4):
             M, alpha = regression(mtrain, Etrain, sigma=sigma, lamda=lamda)
             MAEtrain =  estimation(mtrain, Etrain, M, alpha, sigma)
@@ -175,11 +176,16 @@ if __name__ == "__main__":
     mset = read_json()
     mtest, mset = get_testset(mset)
     mtrain, mcross, mset = get_train_validation_set(mset)
-
     choose_lamda_sigma(mtrain, mcross)
 
+# examine coulumb matrix
+#    M = set_all_coulumb_matrix(mset)
+#    for i in range(len(M)):
+#        print i
+#        print M[i, :]
     
 # examine histgram
+#    Eref = get_Eref(mset)
 #    for i in range(len(Eref)):
 #        if Eref[i] < -10:
 #            print mset[i].formula, Eref[i]
