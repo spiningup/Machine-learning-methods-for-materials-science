@@ -1,9 +1,10 @@
 import numpy as np
 from ase.units import Bohr
-#from ase.io import read
 import json
 import random
 from pylab import *
+from ase.utils import gcd
+from collections import Counter
 
 class Atoms:
     def __init__(self, item=None):
@@ -14,13 +15,26 @@ class Atoms:
             self.natoms = int(item["numatom"])
             self.cell = np.array(item["finalbasismat"])
             self.formula = item["formula"]
+            self.ncell = get_number_of_primitive_cell(item["atommasses_amu"])
             self.Eref = float(item["energynoentrp"]) / self.natoms
+#            self.eigenmat = np.array(item["eigenmat"])
 
+def get_number_of_primitive_cell(Z):
+    b = Counter(Z)
+    nlist = [i[1] for i in b.items()] # number of atoms for each atom species
+    if len(nlist) == 1:
+        return nlist[0]
+    else:
+        ncell = gcd(nlist[0], nlist[1])
+        if len(nlist) > 2:
+            for i in range(2, len(nlist)):
+                ncell = gcd(ncell, nlist[2])
+        return ncell
 
 def set_coulumb_matrix(atoms):
     
     na = atoms.natoms
-    Z = atoms.Z #get_atomic_numbers()
+    Z = atoms.Z 
     V = np.zeros((na, na))
 #    n1, n2, n3 = 2,2,2    
 
@@ -41,7 +55,10 @@ def set_coulumb_matrix(atoms):
 #                        rb = atoms.positions[j] + np.dot(np.array([i1, i2, i3]), atoms.cell)
 #                        d = (atoms.positions[i] - rb) / Bohr
 #                        V[i, j] += Z[i] * Z[j] / np.sqrt(np.dot(d, d)) #* np.exp(-np.dot(d, d)/10)
+
     E = np.linalg.eig(V)[0] / na**2
+
+    #E = atoms.eigenmat[0][0]
     
     return E
 
@@ -52,6 +69,9 @@ def set_all_coulumb_matrix(mset):
     for atoms in mset:
         if atoms.natoms > max_natoms:
             max_natoms = atoms.natoms
+#    for atoms in mset:
+#        if len(atoms.eigenmat[0][0]) > max_natoms:
+#            max_natoms = len(atoms.eigenmat[0][0])
     M = np.zeros((nset, max_natoms))
     for i, atoms in enumerate(mset):
         Mtmp = set_coulumb_matrix(atoms)
@@ -98,17 +118,19 @@ def estimation(mtrain, Etrain, M, alpha, sigma, mcross=None, Ecross=None, kernel
         ni = len(mcross)
         Eref = Ecross
         Mref = set_all_coulumb_matrix(mcross)
+        mset = mcross
     else:
         ni = nj
         Eref = Etrain
         Mref = M
+        mset = mtrain
     MAE = 0
     for i in range(ni):
         Eest = 0 # estimation for set number i
         for j in range(nj):
             Eest += alpha[j] * get_kernel(distance(Mref[i, :], M[j, :]), sigma, kernel=kernel)
         MAE += np.abs(Eest - Eref[i])
-#        print Eest, Eref[i], Eest - Eref[i]
+        print mset[i].formula, mset[i].natoms, mset[i].ncell, Eest, Eref[i], Eest - Eref[i]
     return MAE
 
 def read_json(filename = "data.json"):
@@ -116,8 +138,9 @@ def read_json(filename = "data.json"):
     mset = []
     for i, item in enumerate(d):
         atoms = Atoms(item)
-        if i > 0 and atoms.formula == mset[-1].formula: continue
+        if len(mset) > 0 and atoms.formula == mset[-1].formula: continue
         mset.append(atoms)
+    print "Size of dataset : ", len(mset)//5*5
     del d
 
     return mset[:len(mset)//5*5] # return set that is divisable by 5, since its 5 fold 
@@ -138,8 +161,8 @@ def choose_lamda_sigma(mtrain, mcross):
     Etrain = get_Eref(mtrain)
     Ecross = get_Eref(mcross)
 
-    for sigma in (15, 20): #np.linspace(1,5,4):
-        for lamda in (0.1, ): #np.linspace(0.5, 2.5, 4):
+    for sigma in (50,): #np.linspace(1,5,4):
+        for lamda in (0.1, 0.01): #np.linspace(0.5, 2.5, 4):
             M, alpha = regression(mtrain, Etrain, sigma=sigma, lamda=lamda)
             MAEtrain =  estimation(mtrain, Etrain, M, alpha, sigma)
             MAEcross = estimation(mtrain, Etrain, M, alpha, sigma, mcross, Ecross)
@@ -185,6 +208,11 @@ if __name__ == "__main__":
 #        print M[i, :]
     
 # examine histgram
+#    natoms_all = []
+#    for atoms in mset:
+#        natoms_all.append(atoms.natoms)
+#    hist(natoms_all, 20)
+#    show()
 #    Eref = get_Eref(mset)
 #    for i in range(len(Eref)):
 #        if Eref[i] < -10:
