@@ -6,11 +6,43 @@ from pylab import *
 from ase.utils import gcd
 from collections import Counter
 
+Zval = {
+"Al" : 3, 
+"As" : 3, #8-3,
+"Ba" : 2, 
+"Bi" : 3, #8-3,
+"Ca" : 2, 
+"Cl" : 1, #8-1, 
+"F"  : 1, #8-1, 
+"Ga" : 3, 
+"Ge" : 4, 
+"In" : 3, 
+"K"  : 1,  
+"Mg" : 2, 
+"N"  : 3, #8-3, 
+"Na" : 1, 
+"O"  : 2, #8-2,
+"P"  : 3, #8-3, 
+"Rb" : 1, 
+"S"  : 2, #8-2, 
+"Sb" : 3, #8-3, 
+"Se" : 2, #8-2,
+"Si" : 4,
+"Sn" : 4, 
+"Sr" : 2, 
+"Te" : 2, #8-2,
+"Y"  : 3,
+}
+
 class Atoms:
     def __init__(self, item=None):
         if item is not None:
 #            self.Z = np.array(item["atommasses_amu"])
             self.Z = np.array(item["atomvalences"])
+            self.names = item["atomnames"]
+            self.Z = []
+            for name in self.names:
+                self.Z.append(Zval[name])
             self.positions = np.array(item["finalcartposmat"])
             self.natoms = int(item["numatom"])
             self.cell = np.array(item["finalbasismat"])
@@ -130,7 +162,7 @@ def estimation(mtrain, Etrain, M, alpha, sigma, mcross=None, Ecross=None, kernel
         for j in range(nj):
             Eest += alpha[j] * get_kernel(distance(Mref[i, :], M[j, :]), sigma, kernel=kernel)
         MAE += np.abs(Eest - Eref[i])
-        print mset[i].formula, mset[i].natoms, mset[i].ncell, Eest, Eref[i], Eest - Eref[i]
+#        print mset[i].formula, mset[i].natoms, mset[i].ncell, Eest, Eref[i], Eest - Eref[i]
     return MAE
 
 def read_json(filename = "data.json"):
@@ -161,8 +193,8 @@ def choose_lamda_sigma(mtrain, mcross):
     Etrain = get_Eref(mtrain)
     Ecross = get_Eref(mcross)
 
-    for sigma in (50,): #np.linspace(1,5,4):
-        for lamda in (0.1, 0.01): #np.linspace(0.5, 2.5, 4):
+    for sigma in (0.1, ): #np.linspace(1,5,4):
+        for lamda in (0.01, 0.001, 0.0001): #np.linspace(0.5, 2.5, 4):
             M, alpha = regression(mtrain, Etrain, sigma=sigma, lamda=lamda)
             MAEtrain =  estimation(mtrain, Etrain, M, alpha, sigma)
             MAEcross = estimation(mtrain, Etrain, M, alpha, sigma, mcross, Ecross)
