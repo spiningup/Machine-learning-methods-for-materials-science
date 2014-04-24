@@ -5,6 +5,7 @@ import random
 from pylab import *
 from ase.utils import gcd
 from collections import Counter
+import commands
 
 Zval = {
 "Al" : 3, 
@@ -37,7 +38,7 @@ Zval = {
 class Atoms:
     def __init__(self, item=None):
         if item is not None:
-#            self.Z = np.array(item["atommasses_amu"])
+            self.masses = np.array(item["atommasses_amu"])
             self.Z = np.array(item["atomvalences"])
             self.names = item["atomnames"]
             self.Z = []
@@ -50,6 +51,9 @@ class Atoms:
             self.ncell = get_number_of_primitive_cell(item["atommasses_amu"])
             self.Eref = float(item["energynoentrp"]) / self.natoms
 #            self.eigenmat = np.array(item["eigenmat"])
+            icsdstr = "{0:06d}".format(int(item["icsdnum"]))
+            name = self.names[np.argsort(self.masses)[0]]
+            self.spacegroup = get_spacegroup(name, icsdstr)
 
 def get_number_of_primitive_cell(Z):
     b = Counter(Z)
@@ -62,6 +66,14 @@ def get_number_of_primitive_cell(Z):
             for i in range(2, len(nlist)):
                 ncell = gcd(ncell, nlist[2])
         return ncell
+
+def get_spacegroup(name, icsdno):
+    output =  commands.getoutput("grep 'space' /home/jyan/icsd/%s/icsd_%s.cif"%(name, icsdno))
+    if "No such file or directory" in output:
+        return None
+    else:
+        return output.split("'")[1]
+
 
 def set_coulumb_matrix(atoms):
     
@@ -229,9 +241,11 @@ def get_train_validation_set(mset):
 
 if __name__ == "__main__":
     mset = read_json()
-    mtest, mset = get_testset(mset)
-    mtrain, mcross, mset = get_train_validation_set(mset)
-    choose_lamda_sigma(mtrain, mcross)
+    for atoms in mset:
+        print atoms.formula, atoms.spacegroup
+#    mtest, mset = get_testset(mset)
+#    mtrain, mcross, mset = get_train_validation_set(mset)
+#    choose_lamda_sigma(mtrain, mcross)
 
 # examine coulumb matrix
 #    M = set_all_coulumb_matrix(mset)
