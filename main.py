@@ -7,36 +7,9 @@ from matplotlib.ticker import FuncFormatter
 from ase.utils import gcd
 from collections import Counter, defaultdict
 import commands
+from atomic_constants import pauling, radius, Zval, Eatom, Emadelung, charge
 #from ase.io import read
 #from pylada.crystal import read
-
-Zval = {
-"Al" : 3, 
-"As" : 3, #8-3,
-"Ba" : 2, 
-"Bi" : 3, #8-3,
-"Ca" : 2, 
-"Cl" : 1, #8-1, 
-"F"  : 1, #8-1, 
-"Ga" : 3, 
-"Ge" : 4, 
-"In" : 3, 
-"K"  : 1,  
-"Mg" : 2, 
-"N"  : 3, #8-3, 
-"Na" : 1, 
-"O"  : 2, #8-2,
-"P"  : 3, #8-3, 
-"Rb" : 1, 
-"S"  : 2, #8-2, 
-"Sb" : 3, #8-3, 
-"Se" : 2, #8-2,
-"Si" : 4,
-"Sn" : 4, 
-"Sr" : 2, 
-"Te" : 2, #8-2,
-"Y"  : 3,
-}
 
 class Atoms:
     def __init__(self, item=None):
@@ -44,21 +17,23 @@ class Atoms:
             self.masses = np.array(item["atommasses_amu"])
             self.Z = np.array(item["atomvalences"])
             self.names = item["atomnames"]
-            self.Z = []
-            for name in self.names:
-                self.Z.append(Zval[name])
+#            self.Z = []
+#            for name in self.names:
+#                self.Z.append(Zval[name])
             self.positions = np.array(item["finalcartposmat"])
             self.natoms = int(item["numatom"])
             self.cell = np.array(item["finalbasismat"])
             self.formula = item["formula"]
             self.ncell = get_number_of_primitive_cell(item["atommasses_amu"])
             self.Eref = float(item["energyperatom"])
+            for name in self.names:
+                self.Eref -= Eatom[name] / self.natoms
 #            self.eigenmat = np.array(item["eigenmat"])
             icsdstr = "{0:06d}".format(int(item["icsdnum"]))
             self.icsdno = icsdstr
             name = self.names[np.argsort(self.masses)[0]]
             self.spacegroup, self.exptvol = get_spacegroup_and_volume(name, icsdstr, self.natoms)
-            self.calcvol = float(item["finalvolume_ang3"]) / self.ncell
+            self.calcvol = float(item["finalvolume_ang3"]) / self.natoms #self.ncell
 
 def get_number_of_primitive_cell(Z):
     b = Counter(Z)
@@ -130,7 +105,6 @@ def set_coulumb_matrix(atoms):
 #                        V[i, j] += Z[i] * Z[j] / np.sqrt(np.dot(d, d)) #* np.exp(-np.dot(d, d)/10)
 
     E = np.linalg.eig(V)[0] / na**2
-
     #E = atoms.eigenmat[0][0]
     
     return E
@@ -206,7 +180,7 @@ def estimation(mtrain, Etrain, M, alpha, sigma, mcross=None, Ecross=None, kernel
 #        print mset[i].formula, mset[i].natoms, mset[i].ncell, Eest, Eref[i], Eest - Eref[i]
     return MAE
 
-def read_json(filename = "data.json"):
+def read_json(filename = "data_RS.json"):
     d = json.load(open(filename, 'r'))
     mset = []
     for i, item in enumerate(d):
@@ -229,8 +203,8 @@ def choose_lamda_sigma(mtrain, mcross):
     Etrain = get_Eref(mtrain)
     Ecross = get_Eref(mcross)
 
-    for sigma in (0.1, ): #np.linspace(1,5,4):
-        for lamda in (0.01, 0.001, 0.0001): #np.linspace(0.5, 2.5, 4):
+    for sigma in (10,30,50,70): #np.linspace(1,5,4):
+        for lamda in (0.01, 0.001, ): #np.linspace(0.5, 2.5, 4):
             M, alpha = regression(mtrain, Etrain, sigma=sigma, lamda=lamda)
             MAEtrain =  estimation(mtrain, Etrain, M, alpha, sigma)
             MAEcross = estimation(mtrain, Etrain, M, alpha, sigma, mcross, Ecross)
@@ -276,7 +250,7 @@ def to_percent(y, position):
 
 def plot_Eref(mset):
     Eref = get_Eref(mset)
-    plot_all(Eref, "Number of atoms in simulated cell")
+    plot_all(Eref, "Total energy per atom (eV)")
 
 
 def plot_all(d, xl):
@@ -328,23 +302,67 @@ def plot_elements(mset):
     ylim(0, ymax)
     show()
 
+def write_csv(strtype='general'):
+    if strtype == "general":
+        mset = read_json(filename = "data.json")
+        f = open('general.csv', 'w')
+        print >> f, "(formula, std.mass, sum.mass, std.elecneg, sum.elecneg, calcvol, std.radius, sum.radius, Ecoh"
+        for atoms in mset:
+            elecneg = []
+            rad = []
+            for name in atoms.names:
+                elecneg.append(pauling[name])
+                rad.append(radius[name])
+            sum_elecneg = np.sum(elecneg) / len(elecneg)
+            std_elecneg = np.std(elecneg) 
+            sum_mass = np.sum(atoms.masses) / len(atoms.masses)
+            std_mass = np.std(atoms.masses)
+            sum_radius = np.sum(rad) / len(rad)
+            std_radius = np.std(rad)
+            print >>f, "%s, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.formula, std_mass, sum_mass, std_elecneg, sum_elecneg, 
+                                                                                     atoms.calcvol, std_radius, sum_radius, atoms.Eref)
+    elif strtype == "RS":
+        mset = read_json(filename = "data_RS.json")
+        f = open('RS.csv', 'w')
+        print >> f, "(name0, name1, el, sum.mass, dmass, sum.elecneg, delecneg, calcvol, sum.radius, draius, dpos, Emadelung, Ecoh"
+        for atoms in mset:
+            elecneg1 = pauling[atoms.names[0]]
+            elecneg2 = pauling[atoms.names[1]]
+            volscaled = atoms.calcvol**(1./3.) / (radius[atoms.names[0]] * radius[atoms.names[1]]) * 10**4
+            delecneg = np.abs(elecneg1-elecneg2)
+            sqrtneg = np.std([elecneg1, elecneg2]) #np.sqrt(elecneg1*elecneg2)
+    #        Elatt = Emadelung["%s"%(atoms.icsdno)]
+            for el in atoms.names:
+                if el in charge.keys():
+                    Elatt = Emadelung["%s"%(atoms.icsdno)] / charge[el]**2
+                    break
+            
+            dmass = np.abs(atoms.masses[0] - atoms.masses[1])
+            d = atoms.positions[0] - atoms.positions[1]
+            dpos = np.sqrt(np.inner(d, d))
+    
+            print >>f, "%s, %s, %s, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.names[0], atoms.names[1], el, atoms.masses[0] + atoms.masses[1], np.abs(atoms.masses[0] - atoms.masses[1]), (elecneg1 + elecneg2), delecneg, atoms.calcvol, radius[atoms.names[0]] + radius[atoms.names[1]], np.abs(radius[atoms.names[0]] - radius[atoms.names[1]]), dpos, Elatt, atoms.Eref)
+
+
+
 
 if __name__ == "__main__":
     mset = read_json()
+
+#    for names in mset:
+#        print names.formula, names.icsdno
 #    plot_error_in_volume(mset)
 #    plot_Eref(mset)
 #    plot_natoms(mset)
-#    print len(get_unique_spacegroups(mset))
-    plot_elements(mset)
+#    print get_unique_spacegroups(mset)
+#    plot_elements(mset)
+
+    print get_unique_elements(mset)
+    write_csv("RS")
 
 #    mtest, mset = get_testset(mset)
 #    mtrain, mcross, mset = get_train_validation_set(mset)
 #    choose_lamda_sigma(mtrain, mcross)
 
-# examine coulumb matrix
-#    M = set_all_coulumb_matrix(mset)
-#    for i in range(len(M)):
-#        print i
-#        print M[i, :]
     
 
