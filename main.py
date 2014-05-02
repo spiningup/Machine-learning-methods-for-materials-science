@@ -1,15 +1,16 @@
-import numpy as np
-from ase.units import Bohr
+import commands
 import json
-import random
+import pickle
+import numpy as np
+from collections import Counter, defaultdict
 from pylab import *
 from matplotlib.ticker import FuncFormatter
+from ase.units import Bohr
 from ase.utils import gcd
-from collections import Counter, defaultdict
-import commands
-from atomic_constants import pauling, radius, Zval, Eatom, Emadelung, charge
-#from ase.io import read
-#from pylada.crystal import read
+from atomic_constants import pauling, radius, Zval, Eatom, Emadelung, charge, mus
+from sklearn import neighbors
+
+Exptvol = json.load(open("exptvol.json",'r'))
 
 class Atoms:
     def __init__(self, item=None):
@@ -26,13 +27,13 @@ class Atoms:
             self.formula = item["formula"]
             self.ncell = get_number_of_primitive_cell(item["atommasses_amu"])
             self.Eref = float(item["energyperatom"])
-            for name in self.names:
-                self.Eref -= Eatom[name] / self.natoms
+#            for name in self.names:
+#                self.Eref -= mus[name] / self.natoms
 #            self.eigenmat = np.array(item["eigenmat"])
             icsdstr = "{0:06d}".format(int(item["icsdnum"]))
             self.icsdno = icsdstr
-            name = self.names[np.argsort(self.masses)[0]]
-            self.spacegroup, self.exptvol = get_spacegroup_and_volume(name, icsdstr, self.natoms)
+#            name = self.names[np.argsort(self.masses)[0]]
+#            self.spacegroup, self.exptvol = get_spacegroup_and_volume(name, icsdstr, self.natoms)
             self.calcvol = float(item["finalvolume_ang3"]) / self.natoms #self.ncell
 
 def get_number_of_primitive_cell(Z):
@@ -136,18 +137,29 @@ def distance(M1, M2):
 def regression(mset, Eref, sigma, lamda, kernel="laplacian"):
     # lamda for regularization, sigma for gaussian damping
     nset = len(mset) # number of training set
-    M = set_all_coulumb_matrix(mset)
-    print "Finished coulomb matrix"
+#    M = set_all_coulumb_matrix(mset)
+#    print "Finished coulomb matrix"
+
+    # vladan's version
+    pkl_file = open('Smatrix.pkl', 'rb')
+    s_matrix = pickle.load(pkl_file)
 
     K = np.zeros((nset, nset))
     for i in range(nset):
+        M1 = s_matrix["%s"%(mset[i].icsdno)]
         for j in range(nset):
-            K[i, j] = get_kernel(distance(M[i, :], M[j, :]), sigma, kernel=kernel)
+            M2 = s_matrix["%s"%(mset[j].icsdno)]
+            d = np.trace(np.dot(M1-M2,M1-M2))
+#            K[i, j] = get_kernel(distance(M[i, :], M[j, :]), sigma, kernel=kernel)
+            K[i, j] = get_kernel(d, sigma, kernel=kernel)
         K[i, i] += lamda
     print "Finished kernel"
 
+    pkl_file.close()
+
     alpha = np.dot(np.linalg.inv(K), Eref) # not sure about the order
-    return M, alpha
+#    return M, alpha
+    return alpha
 
 
 def get_kernel(d, sigma, kernel="gaussian"):
@@ -160,37 +172,89 @@ def get_kernel(d, sigma, kernel="gaussian"):
         XX
 
 def estimation(mtrain, Etrain, M, alpha, sigma, mcross=None, Ecross=None, kernel="laplacian"):
+    pkl_file = open('Smatrix.pkl', 'rb')
+    s_matrix = pickle.load(pkl_file)
+
     nj = len(mtrain)
     if mcross is not None:
         ni = len(mcross)
         Eref = Ecross
-        Mref = set_all_coulumb_matrix(mcross)
+#        Mref = set_all_coulumb_matrix(mcross)
         mset = mcross
     else:
         ni = nj
         Eref = Etrain
-        Mref = M
+#        Mref = M
         mset = mtrain
     MAE = 0
     for i in range(ni):
         Eest = 0 # estimation for set number i
+        Mref = s_matrix["%s"%(mset[i].icsdno)]
         for j in range(nj):
-            Eest += alpha[j] * get_kernel(distance(Mref[i, :], M[j, :]), sigma, kernel=kernel)
+            M = s_matrix["%s"%(mtrain[j].icsdno)]
+            d = np.trace(np.dot(Mref-M,Mref-M))
+            Eest += alpha[j] * get_kernel(d, sigma, kernel=kernel)
+#            Eest += alpha[j] * get_kernel(distance(Mref[i, :], M[j, :]), sigma, kernel=kernel)
         MAE += np.abs(Eest - Eref[i])
 #        print mset[i].formula, mset[i].natoms, mset[i].ncell, Eest, Eref[i], Eest - Eref[i]
+    pkl_file.close()
     return MAE
+
+
+def knn_regression(mtrain, mcross, n_ngh, ndim,scaling):
+    Etrain = np.array(get_Eref(mtrain))
+    Ecross = np.array(get_Eref(mcross))
+
+    Xtrain = np.zeros((len(Etrain), ndim)); Xcross = np.zeros((len(Ecross), ndim))
+    for mset in (mtrain, mcross):
+        for i, atoms in enumerate(mset):
+            elecneg = 0
+            rad = 0
+            for name in atoms.names:
+                elecneg += pauling[name] 
+                rad += radius[name]
+            if mset == mtrain:
+                Xtrain[i] = atoms.exptvol**(1./3.), rad/atoms.natoms, elecneg/atoms.natoms
+            elif mset == mcross:
+                Xcross[i] = atoms.exptvol**(1./3.), rad/atoms.natoms, elecneg/atoms.natoms
+    for i in range(ndim):
+        Xtrain[:,i] *= scaling[i]
+        Xcross[:,i] *= scaling[i]
+
+    n_neighbors = n_ngh
+    knn = neighbors.KNeighborsRegressor(n_neighbors, weights="distance")
+    model = knn.fit(Xtrain, Etrain)
+    plot(model.predict(Xcross),Ecross, 'ok')
+    show()
+    return np.nansum(np.abs(model.predict(Xcross) - Ecross)) / len(Ecross) # MAE
+
 
 def read_json(filename = "data_RS.json"):
     d = json.load(open(filename, 'r'))
+    formulas = []
     mset = []
     for i, item in enumerate(d):
         atoms = Atoms(item)
-        if len(mset) > 0 and atoms.formula == mset[-1].formula: continue
+        try:
+            atoms.exptvol = Exptvol[atoms.icsdno]
+        except:
+            continue
+        if atoms.formula not in formulas: 
+            formulas.append(atoms.formula)
+        else:
+            continue
+#        if len(mset) > 0 and atoms.formula == mset[-1].formula: continue
         mset.append(atoms)
     print "Size of dataset : ", len(mset)//5*5
     del d
 
-    return mset[:len(mset)//5*5] # return set that is divisable by 5, since its 5 fold 
+    Eref = get_Eref(mset)
+    index = np.argsort(Eref)
+    msetnew = []
+    for i in index:
+        msetnew.append(mset[i])
+
+    return msetnew[:len(msetnew)//5*5] # return set that is divisable by 5, since its 5 fold 
 
 def get_Eref(mset):
     Eref = []
@@ -203,9 +267,10 @@ def choose_lamda_sigma(mtrain, mcross):
     Etrain = get_Eref(mtrain)
     Ecross = get_Eref(mcross)
 
-    for sigma in (10,30,50,70): #np.linspace(1,5,4):
+    for sigma in (10,50): #np.linspace(1,5,4):
         for lamda in (0.01, 0.001, ): #np.linspace(0.5, 2.5, 4):
-            M, alpha = regression(mtrain, Etrain, sigma=sigma, lamda=lamda)
+            alpha = regression(mtrain, Etrain, sigma=sigma, lamda=lamda)
+            M = 0
             MAEtrain =  estimation(mtrain, Etrain, M, alpha, sigma)
             MAEcross = estimation(mtrain, Etrain, M, alpha, sigma, mcross, Ecross)
 
@@ -347,7 +412,14 @@ def write_csv(strtype='general'):
 
 
 if __name__ == "__main__":
-    mset = read_json()
+    mset = read_json("data.json")
+    mtest, mset = get_testset(mset)
+    mtrain, mcross, mset = get_train_validation_set(mset)
+    choose_lamda_sigma(mtrain, mcross)
+#    for n in range(5,10):
+#        for s1 in (0.01, 0.05, 0.1, 0.3):
+#            for s2 in (0.005, 0.01, 0.02, 0.05):
+#            print n, s1, knn_regression(mtrain, mcross, n, 3, [1, 0.01, 1])
 
 #    for names in mset:
 #        print names.formula, names.icsdno
@@ -356,13 +428,8 @@ if __name__ == "__main__":
 #    plot_natoms(mset)
 #    print get_unique_spacegroups(mset)
 #    plot_elements(mset)
-
-    print get_unique_elements(mset)
-    write_csv("RS")
-
-#    mtest, mset = get_testset(mset)
-#    mtrain, mcross, mset = get_train_validation_set(mset)
-#    choose_lamda_sigma(mtrain, mcross)
+#    print get_unique_elements(mset)
+#    write_csv("RS")
 
     
 
