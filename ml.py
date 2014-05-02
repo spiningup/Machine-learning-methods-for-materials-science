@@ -1,5 +1,6 @@
 from sklearn import neighbors
 import numpy as np
+import pickle
 from ase.units import Bohr
 from read_json import attribute_tolist, read_json
 from split_dataset import *
