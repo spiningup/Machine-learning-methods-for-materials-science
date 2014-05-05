@@ -1,7 +1,8 @@
-from pylada.crystal import read
+from pylada.crystal import read, write
 import json
 import os
 import numpy as np
+import shutil
 from collections import Counter
 
 
@@ -24,6 +25,7 @@ for item in d:
 
 #    print name, icsdstr
     atoms = read.icsd_cif_a("/home/jyan/icsd/%s/icsd_%s.cif"%(name, icsdstr))        
+    shutil.copy2("/home/jyan/icsd/%s/icsd_%s.cif"%(name, icsdstr), 'structures/icsd_%s.cif'%(icsdstr))
 
     vol = atoms.volume.magnitude / len(atoms)
     exptvol["%s"%(icsdstr)] = vol

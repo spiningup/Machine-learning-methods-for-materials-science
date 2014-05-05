@@ -14,11 +14,12 @@ lamda = 0.01
 #kRR = kernel_ridge_regression(mtrain, mcross, lamda, sigma, matrixtype=1)
 #print kRR.run()
 
-kRR = kernel_ridge_regression(mtrain, mcross, lamda, sigma, matrixtype=2)
-#print kRR.run()
-kRR.choose_lamda_sigma([10, 50], [0.01, 0.001])
+#kRR = kernel_ridge_regression(mtrain, mcross, lamda, sigma, matrixtype=2)
+#kRR.choose_lamda_sigma([10, 50], [0.01, 0.001])
 
-print knn_regression(mtrain, mcross, 5, 3, [1, 0.01, 1])
+
+print knn_regression(mtrain, mcross, 5, 4)
+
 
 
 

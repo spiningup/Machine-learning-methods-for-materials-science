@@ -3,6 +3,9 @@ import json
 import commands
 from collections import Counter, defaultdict
 from ase.utils import gcd
+from atomic_constants import mus, Eatom
+
+Exptvol = json.load(open("exptvol.json",'r'))
 
 class Atoms:
     def __init__(self, item=None, getadd=False):
@@ -12,18 +15,20 @@ class Atoms:
             self.names = item["atomnames"]
 #            self.Z = []
 #            for name in self.names:
-#                self.Z.append(Zval[name])
+#                self.Z.append(1)#Zval[name])
             self.positions = np.array(item["finalcartposmat"])
             self.natoms = int(item["numatom"])
             self.cell = np.array(item["finalbasismat"])
             self.formula = item["formula"]
             self.ncell = self.get_number_of_primitive_cell(item["atommasses_amu"])
             self.Eref = float(item["energyperatom"])
-#            for name in self.names:
+            for name in self.names:
+                self.Eref -= Eatom[name] / self.natoms
 #                self.Eref -= mus[name] / self.natoms
 #            self.eigenmat = np.array(item["eigenmat"])
             icsdstr = "{0:06d}".format(int(item["icsdnum"]))
             self.icsdno = icsdstr
+            self.exptvol = Exptvol[self.icsdno]
 
             if getadd:
                 # get stuff not in json file

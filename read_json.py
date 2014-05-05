@@ -4,20 +4,12 @@ from collections import defaultdict
 from atoms import Atoms
 
 
-Exptvol = json.load(open("exptvol.json",'r'))
-
 def read_json(filename = "data_RS.json", getadd=False):
     d = json.load(open(filename, 'r'))
     formulas = []
     mset = []
     for i, item in enumerate(d):
         atoms = Atoms(item, getadd=getadd)
-
-        # ignore atoms without expt vol
-        try:
-            atoms.exptvol = Exptvol[atoms.icsdno]
-        except:
-            continue
 
         # ignore formula already in dataset
         if atoms.formula not in formulas: 

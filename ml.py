@@ -1,10 +1,19 @@
 from sklearn import neighbors
 import numpy as np
 import pickle
+from pylab import *
 from ase.units import Bohr
 from read_json import attribute_tolist, read_json
 from split_dataset import *
 from atomic_constants import pauling, radius, Zval, Eatom, Emadelung, charge, mus
+
+
+def get_dpair():
+    pkl_file = open('Spair.pkl', 'rb')
+    dpair = pickle.load(pkl_file)
+    pkl_file.close()
+    return dpair
+
 
 class kernel_ridge_regression:
     def __init__(self, mtrain, mcross, lamda, sigma, matrixtype=1):
@@ -13,6 +22,9 @@ class kernel_ridge_regression:
         self.lamda = lamda
         self.mtrain = mtrain
         self.mcross = mcross
+
+        if matrixtype==2:
+            self.dpair = get_dpair()
         
 
     def set_coulumb_matrix(self, atoms):
@@ -29,18 +41,11 @@ class kernel_ridge_regression:
                     d = (atoms.positions[i] - atoms.positions[j]) / Bohr
                     V[i, j] = Z[i] * Z[j] / np.sqrt(np.dot(d, d))
     
-    # ------- neighbors -------------
-    #            for i1 in range(-n1/2, n1/2+1):
-    #                for i2 in range(-n2/2, n2/2+1):
-    #                    for i3 in range(-n3/2, n3/2+1):
-    #                        if i1 == i2 == i3 == 0:
-    #                            continue
-    #                        rb = atoms.positions[j] + np.dot(np.array([i1, i2, i3]), atoms.cell)
-    #                        d = (atoms.positions[i] - rb) / Bohr
-    #                        V[i, j] += Z[i] * Z[j] / np.sqrt(np.dot(d, d)) #* np.exp(-np.dot(d, d)/10)
-    
-        E = np.linalg.eig(V)[0] / na**2
-        #E = atoms.eigenmat[0][0]
+        E = np.linalg.eig(V)[0]
+        E /= np.sum(np.abs(E))
+
+        elements = set(atoms.names)
+        ne = len(elements)
         
         return E
     
@@ -63,14 +68,17 @@ class kernel_ridge_regression:
             XX
     
     
-    def distance(self, M1, M2):
+    def distance(self, M1, M2, icsd1=None, icsd2=None):
         if M1.ndim == 1 and M2.ndim == 1:
             n = max(len(M1), len(M2))
             M1 = np.append(M1, np.zeros(n-len(M1)))
             M2 = np.append(M2, np.zeros(n-len(M2)))
             return np.sqrt(np.dot(M1-M2, M1-M2))
         elif M1.ndim == 2 and M2.ndim == 2:
-            return np.trace(np.dot(M1-M2,M1-M2))
+            if icsd1 is None:
+                return np.trace(np.dot(M1-M2,M1-M2))
+            else:
+                return self.dpair[(icsd1, icsd2)]
         else:
             XX
 
@@ -85,7 +93,7 @@ class kernel_ridge_regression:
             M1 = M["%s"%(mset[i].icsdno)]
             for j in range(nset):
                 M2 = M["%s"%(mset[j].icsdno)]
-                K[i, j] = self.get_kernel(self.distance(M1, M2), sigma, kernel=kernel)
+                K[i, j] = self.get_kernel(self.distance(M1, M2, mset[i].icsdno, mset[j].icsdno), sigma, kernel=kernel)
             K[i, i] += lamda
         print "Finished kernel"
     
@@ -114,7 +122,7 @@ class kernel_ridge_regression:
             M1 = Mref["%s"%(mcross[i].icsdno)]
             for j in range(nj):
                 M2 = M["%s"%(mtrain[j].icsdno)]
-                Eest += alpha[j] * self.get_kernel(self.distance(M1, M2), sigma, kernel=kernel)
+                Eest += alpha[j] * self.get_kernel(self.distance(M1, M2, mcross[i].icsdno, mtrain[j].icsdno), sigma, kernel=kernel)
             MAE += np.abs(Eest - Eref[i])
     #        print mset[i].formula, mset[i].natoms, mset[i].ncell, Eest, Eref[i], Eest - Eref[i]
         return MAE / ni
@@ -138,31 +146,44 @@ class kernel_ridge_regression:
                 print sigma, lamda, self.run(sigma, lamda)
     
 
-def knn_regression(mtrain, mcross, n_ngh, ndim,scaling):
+def knn_regression(mtrain, mcross, n_ngh, ndim=1):
     Etrain = np.array(attribute_tolist(mtrain, attr="Eref"))
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
-    
+
     Xtrain = np.zeros((len(Etrain), ndim)); Xcross = np.zeros((len(Ecross), ndim))
     for mset in (mtrain, mcross):
         for i, atoms in enumerate(mset):
             elecneg = 0
             rad = 0
-            for name in atoms.names:
+            for ii, name in enumerate(atoms.names):
                 elecneg += pauling[name] 
                 rad += radius[name]
+            nn = atoms.natoms
             if mset == mtrain:
-                Xtrain[i] = atoms.exptvol**(1./3.), rad/atoms.natoms, elecneg/atoms.natoms
+                Xtrain[i] = atoms.exptvol, rad/nn, elecneg/nn, np.sum(atoms.masses) / nn
             elif mset == mcross:
-                Xcross[i] = atoms.exptvol**(1./3.), rad/atoms.natoms, elecneg/atoms.natoms
+                Xcross[i] = atoms.exptvol, rad/nn, elecneg/nn, np.sum(atoms.masses) / nn
+                
+    # feature normalization
     for i in range(ndim):
-        Xtrain[:,i] *= scaling[i]
-        Xcross[:,i] *= scaling[i]
+        xmean = np.mean(Xtrain[:,i])
+        xstd = np.std(Xtrain[:,i])
+        Xtrain[:,i] = (Xtrain[:, i] - xmean) / xstd
+        Xcross[:,i] = (Xcross[:, i] - xmean) / xstd
     
     n_neighbors = n_ngh
     knn = neighbors.KNeighborsRegressor(n_neighbors, weights="distance")
     model = knn.fit(Xtrain, Etrain)
 
-    return np.nansum(np.abs(model.predict(Xcross) - Ecross)) / len(Ecross) # MAE
+    Epredict = model.predict(Xcross)
+    for i, atoms in enumerate(mcross):
+#        print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
+        plot(Epredict[i], Ecross[i], '+r')
+        text(Epredict[i], Ecross[i], atoms.formula)
+    plot(Ecross, Ecross, '-k')
+    show()
+
+    return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
 
 
 if __name__ == "__main__":
