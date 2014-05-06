@@ -1,5 +1,5 @@
 from sklearn import neighbors
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, KernelPCA
 import numpy as np
 import pickle
 from pylab import *
@@ -152,7 +152,7 @@ def get_X(mtrain, mcross):
     Etrain = np.array(attribute_tolist(mtrain, attr="Eref"))
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
 
-    ndim = 17
+    ndim = 10
     Xtrain = np.zeros((len(Etrain), ndim)); Xcross = np.zeros((len(Ecross), ndim))
     for mset in (mtrain, mcross):
         for i, atoms in enumerate(mset):
@@ -171,8 +171,8 @@ def get_X(mtrain, mcross):
                 Eionization.append(Eion[name])
 
             val = [atoms.exptvol, np.mean(rad), np.mean(elecneg), np.mean(mass), np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg),
-                   np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization),
-                   atoms.avg_cord, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
+                   np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization)]
+#                   atoms.avg_cord]#, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
 
             if mset == mtrain:
                 Xtrain[i] = val
@@ -190,21 +190,23 @@ def get_X(mtrain, mcross):
 
 
 def knn_regression(mtrain, mcross, n_ngh):
-    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
-    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=10)
-
-    n_neighbors = n_ngh
-    knn = neighbors.KNeighborsRegressor(n_neighbors, weights="distance")
-    model = knn.fit(Xtrain, Etrain)
-
-    Epredict = model.predict(Xcross)
-    for i, atoms in enumerate(mcross):
-#        print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
-        plot(Epredict[i], Ecross[i], '+r')
-        text(Epredict[i], Ecross[i], atoms.formula)
-    plot(Ecross, Ecross, '-k')
-#    show()
-    return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
+    for kernel in ([None, 'rbf', 'poly','cosine']):
+        Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
+        Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
+    
+        n_neighbors = n_ngh
+        knn = neighbors.KNeighborsRegressor(n_neighbors, weights="distance")
+        model = knn.fit(Xtrain, Etrain)
+    
+        Epredict = model.predict(Xcross)
+    #    for i, atoms in enumerate(mcross):
+    #        print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
+    #        plot(Epredict[i], Ecross[i], '+r')
+    #        text(Epredict[i], Ecross[i], atoms.formula)
+    #    plot(Ecross, Ecross, '-k')
+    #    show()
+        print np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
+    return 
 
 
 def krr_regression(mtrain, mcross, sigma=50, lamda=0.01):
@@ -232,13 +234,18 @@ def krr_regression(mtrain, mcross, sigma=50, lamda=0.01):
 
     return get_MAE(Xtrain, Etrain), get_MAE(Xcross, Ecross)
 
-def pca_decomposition(Xtrain, Xcross, n_components=7):
-    pca = PCA(n_components=n_components)
+
+def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
+    if kernel is None:
+        pca = PCA(n_components=n_components)
+    else:
+        pca = KernelPCA(kernel=kernel, n_components=n_components)
+
     Xtrain = pca.fit_transform(Xtrain)    
     Xcross = pca.transform(Xcross)
-    print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
+    if kernel is None:  print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
     return Xtrain, Xcross
-
+    
 
 if __name__ == "__main__":
     mset = read_json("data.json")
