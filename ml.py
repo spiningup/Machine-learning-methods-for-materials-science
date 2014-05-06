@@ -147,7 +147,7 @@ class kernel_ridge_regression:
                 print sigma, lamda, self.run(sigma, lamda)
     
 
-def get_X(mtrain, mcross, scaling=1):
+def get_X(mtrain, mcross, scaling=1, featurelist="all"):
 
     Etrain = np.array(attribute_tolist(mtrain, attr="Eref"))
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
@@ -193,18 +193,57 @@ def get_X(mtrain, mcross, scaling=1):
             Xtrain[:, i] /= np.sqrt(np.inner(Xtrain[:, i], Xtrain[:, i]))
             Xcross[:, i] /= np.sqrt(np.inner(Xcross[:, i], Xcross[:, i]))
 
-    return Xtrain, Xcross, Etrain, Ecross
+    if featurelist == "all":
+        return Xtrain, Xcross, Etrain, Ecross
+    else:
+        nfeature = len(featurelist)
+        Xtrain2 = np.zeros((len(Etrain), nfeature)); Xcross2 = np.zeros((len(Ecross), nfeature))
+        for i in range(nfeature):
+            Xtrain2[:, i] = Xtrain[:, featurelist[i]]
+            Xcross2[:, i] = Xcross[:, featurelist[i]]
+        return Xtrain2, Xcross2, Etrain, Ecross
+    
 
 
-def knn_regression(mtrain, mcross, n_ngh, kernel=None, scaling=1, weights="distance", metric="minkowski"):
-    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling)
-    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
+def knn_regression(mtrain, mcross, n_ngh, kernel=None, scaling=1, weights="distance", metric="minkowski", selectf=False):
+    def train(featurelist):
+        Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling, featurelist)
+    #    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
+        
+        n_neighbors = n_ngh
+        knn = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=metric)
+        model = knn.fit(Xtrain, Etrain)
+        
+        Epredict = model.predict(Xcross)
+#        print np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
+        return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
+
+    def select_feature(flist, minerror):
+        found = False
+        for i in range(len(flist)):
+            featurelist = flist[:]
+            featurelist.pop(i)
+            error = train(featurelist)
+            if error < minerror:
+                found = True
+                minerror = error
+                fminlist = featurelist[:]
+        if found: 
+            print "found"
+            print fminlist, minerror
+            return select_feature(fminlist, minerror)
+        else: 
+            print "not found"
+            return flist, minerror
+
+    ndim = 10
+    featurelist = flist = range(10)
+    minerror = train(featurelist)
     
-    n_neighbors = n_ngh
-    knn = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=metric)
-    model = knn.fit(Xtrain, Etrain)
-    
-    Epredict = model.predict(Xcross)
+    if selectf:
+        flist, minerror = select_feature(featurelist, minerror)
+        print flist, minerror
+
 #    for i, atoms in enumerate(mcross):
 #        print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
 #        plot(Epredict[i], Ecross[i], '+r')
@@ -212,7 +251,7 @@ def knn_regression(mtrain, mcross, n_ngh, kernel=None, scaling=1, weights="dista
 #    plot(Ecross, Ecross, '-k')
 #    show()
         
-    return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
+    return minerror
 
 
 def krr_regression(mtrain, mcross, sigma=50, lamda=0.01):
