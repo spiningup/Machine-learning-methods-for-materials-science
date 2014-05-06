@@ -196,26 +196,23 @@ def get_X(mtrain, mcross, scaling=1):
     return Xtrain, Xcross, Etrain, Ecross
 
 
-def knn_regression(mtrain, mcross, n_ngh):
-    for kernel in ([None, 'rbf', 'poly','cosine']):
-        for scaling in ([1, 2, 3]):
-            Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling)
-            Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
+def knn_regression(mtrain, mcross, n_ngh, kernel=None, scaling=1, weights="distance", metric="minkowski"):
+    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling)
+    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
+    
+    n_neighbors = n_ngh
+    knn = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=metric)
+    model = knn.fit(Xtrain, Etrain)
+    
+    Epredict = model.predict(Xcross)
+#    for i, atoms in enumerate(mcross):
+#        print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
+#        plot(Epredict[i], Ecross[i], '+r')
+#        text(Epredict[i], Ecross[i], atoms.formula)
+#    plot(Ecross, Ecross, '-k')
+#    show()
         
-            n_neighbors = n_ngh
-            knn = neighbors.KNeighborsRegressor(n_neighbors, weights="distance")
-            model = knn.fit(Xtrain, Etrain)
-        
-            Epredict = model.predict(Xcross)
-            print kernel, scaling, np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
-    #    for i, atoms in enumerate(mcross):
-    #        print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
-    #        plot(Epredict[i], Ecross[i], '+r')
-    #        text(Epredict[i], Ecross[i], atoms.formula)
-    #    plot(Ecross, Ecross, '-k')
-    #    show()
-        
-    return 
+    return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
 
 
 def krr_regression(mtrain, mcross, sigma=50, lamda=0.01):
@@ -252,7 +249,7 @@ def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
 
     Xtrain = pca.fit_transform(Xtrain)    
     Xcross = pca.transform(Xcross)
-    if kernel is None:  print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
+#    if kernel is None:  print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
     return Xtrain, Xcross
     
 
