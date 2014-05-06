@@ -22,7 +22,6 @@ lamda = 0.01
 #    for scaling in ([1, 2, 3]):
 #        for weights in (["distance", "uniform"]):
 #            print kernel, scaling, weights, knn_regression(mtrain, mcross, 5, kernel=kernel, scaling=scaling, weights=weights)
-
 #for metric in (["euclidean", "manhattan", "chebyshev", "minkowski",]):
 #    print metric, knn_regression(mtrain, mcross, 5, metric=metric)
 print "knn MAE", knn_regression(mtrain, mcross, 5)
@@ -30,11 +29,18 @@ print "knn MAE", knn_regression(mtrain, mcross, 5)
 #print krr_regression(mtrain, mcross, 50, 0.01)
 #pca_decomposition(mtrain, mcross)
 
-#print "tree MAE", treebased_regression(mtrain, mcross,"tree")
-#print "forest MAE", treebased_regression(mtrain, mcross,"forest")
+# knn, forest, svr(nusvr) are the best
+#for  method in (["tree", "forest", "bayesridge", "ard", "lars", "lasso", "linear", "passiveagressive", "sgd", "svr", "nusvr"]):
+#    print method, sklearn_regression(mtrain, mcross, method)
 
-for  method in (["bayesridge", "ard", "lars", "lasso", "linear", "passiveagressive", "sgd"]):
-    print method, generalized_linear_regression(mtrain, mcross, method)
+# svr with rbf kernel is the best
+# gamma (defaul=0) is good, degree does not matter, probablity does not matter when epsilon = 0
+#for kernel in (['rbf','linear', 'poly']):
+#    for epsilon in ([0, 0.01, 0.1, ]):
+#        for prob in ([True, False]):
+#            print kernel, epsilon, sklearn_regression(mtrain, mcross, method="svr", kernel=kernel, epsilon=epsilon, probability=prob)
+print sklearn_regression(mtrain, mcross, method="svr")
+
 
 
 

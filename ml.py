@@ -3,6 +3,7 @@ from sklearn.decomposition import PCA, KernelPCA
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import *
+from sklearn.svm import SVR, NuSVR
 import numpy as np
 import pickle
 from pylab import *
@@ -294,32 +295,25 @@ def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
 #    if kernel is None:  print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
     return Xtrain, Xcross
     
-def treebased_regression(mtrain, mcross, method='forest'):
+def sklearn_regression(mtrain, mcross, method='forest', **kwargs):
     Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
-    if method == "tree":
-        model = DecisionTreeRegressor()
-    elif method == "forest":
-        model = RandomForestRegressor()
-    model.fit(Xtrain, Etrain)
-    Epredict = model.predict(Xcross)
-    print "%s R^2 score"%(method), model.score(Xcross, Ecross)
-    return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
-
-def generalized_linear_regression(mtrain, mcross, method="bayesridge"):
-    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
-
-    if method == "bayesridge": model = BayesianRidge()
-    elif method == "ard":      model = ARDRegression()
-    elif method == "lars":     model = Lars()
-    elif method == "lasso":    model = Lasso()
-    elif method == "linear":   model = LinearRegression()
+    if   method == "tree":       model = DecisionTreeRegressor()
+    elif method == "forest":     model = RandomForestRegressor()
+    elif method == "bayesridge": model = BayesianRidge()
+    elif method == "ard":        model = ARDRegression()
+    elif method == "lars":       model = Lars()
+    elif method == "lasso":      model = Lasso()
+    elif method == "linear":     model = LinearRegression()
     elif method == "passiveagressive": model = PassiveAggressiveRegressor()
-    elif method == "sgd":      model = SGDRegressor()
-
+    elif method == "sgd":        model = SGDRegressor()
+    elif method == "svr":        model = SVR(**kwargs)
+    elif method == "nusvr":        model = NuSVR()
+        
     model.fit(Xtrain, Etrain)
     Epredict = model.predict(Xcross)
 #    print "%s R^2 score"%(method), model.score(Xcross, Ecross)
     return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
+
 
 if __name__ == "__main__":
     mset = read_json("data.json")
