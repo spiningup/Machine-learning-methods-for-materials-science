@@ -25,11 +25,19 @@ lamda = 0.01
 
 #for metric in (["euclidean", "manhattan", "chebyshev", "minkowski",]):
 #    print metric, knn_regression(mtrain, mcross, 5, metric=metric)
-print knn_regression(mtrain, mcross, 5)
+print "knn MAE", knn_regression(mtrain, mcross, 5)
 
 #print krr_regression(mtrain, mcross, 50, 0.01)
-
 #pca_decomposition(mtrain, mcross)
+
+#print "tree MAE", treebased_regression(mtrain, mcross,"tree")
+#print "forest MAE", treebased_regression(mtrain, mcross,"forest")
+
+for  method in (["bayesridge", "ard", "lars", "lasso", "linear", "passiveagressive", "sgd"]):
+    print method, generalized_linear_regression(mtrain, mcross, method)
+
+
+
 
 
 

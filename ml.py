@@ -1,5 +1,8 @@
 from sklearn import neighbors
 from sklearn.decomposition import PCA, KernelPCA
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import *
 import numpy as np
 import pickle
 from pylab import *
@@ -211,11 +214,11 @@ def knn_regression(mtrain, mcross, n_ngh, kernel=None, scaling=1, weights="dista
     #    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
         
         n_neighbors = n_ngh
-        knn = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=metric)
-        model = knn.fit(Xtrain, Etrain)
+        model = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=metric)
+        model.fit(Xtrain, Etrain)
         
         Epredict = model.predict(Xcross)
-#        print np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
+        #np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
         return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
 
     def select_feature(flist, minerror):
@@ -291,6 +294,32 @@ def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
 #    if kernel is None:  print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
     return Xtrain, Xcross
     
+def treebased_regression(mtrain, mcross, method='forest'):
+    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
+    if method == "tree":
+        model = DecisionTreeRegressor()
+    elif method == "forest":
+        model = RandomForestRegressor()
+    model.fit(Xtrain, Etrain)
+    Epredict = model.predict(Xcross)
+    print "%s R^2 score"%(method), model.score(Xcross, Ecross)
+    return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
+
+def generalized_linear_regression(mtrain, mcross, method="bayesridge"):
+    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
+
+    if method == "bayesridge": model = BayesianRidge()
+    elif method == "ard":      model = ARDRegression()
+    elif method == "lars":     model = Lars()
+    elif method == "lasso":    model = Lasso()
+    elif method == "linear":   model = LinearRegression()
+    elif method == "passiveagressive": model = PassiveAggressiveRegressor()
+    elif method == "sgd":      model = SGDRegressor()
+
+    model.fit(Xtrain, Etrain)
+    Epredict = model.predict(Xcross)
+#    print "%s R^2 score"%(method), model.score(Xcross, Ecross)
+    return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
 
 if __name__ == "__main__":
     mset = read_json("data.json")
