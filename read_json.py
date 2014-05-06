@@ -17,6 +17,10 @@ def read_json(filename = "data_RS.json", getadd=False):
         else:
             continue
 
+        volerror = np.abs(atoms.calcvol - atoms.exptvol) / atoms.exptvol 
+        if volerror > 0.2:
+            continue
+
         mset.append(atoms)
 
     print "Size of dataset : ", len(mset)//5*5

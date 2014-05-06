@@ -1,11 +1,13 @@
 import numpy as np
-import json
+import json, pickle
 import commands
 from collections import Counter, defaultdict
 from ase.utils import gcd
 from atomic_constants import mus, Eatom
 
-Exptvol = json.load(open("exptvol.json",'r'))
+Exptvol = pickle.load(open("exptvol.pkl",'r'))
+avg_cord = json.load(open("avg_cord.json", 'r'))
+
 
 class Atoms:
     def __init__(self, item=None, getadd=False):
@@ -28,7 +30,10 @@ class Atoms:
 #            self.eigenmat = np.array(item["eigenmat"])
             icsdstr = "{0:06d}".format(int(item["icsdnum"]))
             self.icsdno = icsdstr
-            self.exptvol = Exptvol[self.icsdno]
+            self.exptvol = Exptvol[self.icsdno][6]
+            self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
+            self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
+            self.avg_cord = avg_cord[self.icsdno]
 
             if getadd:
                 # get stuff not in json file

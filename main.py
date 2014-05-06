@@ -17,8 +17,10 @@ lamda = 0.01
 #kRR = kernel_ridge_regression(mtrain, mcross, lamda, sigma, matrixtype=2)
 #kRR.choose_lamda_sigma([10, 50], [0.01, 0.001])
 
+print knn_regression(mtrain, mcross, 5)
+#print krr_regression(mtrain, mcross, 50, 0.01)
 
-print knn_regression(mtrain, mcross, 5, 4)
+#pca_decomposition(mtrain, mcross)
 
 
 

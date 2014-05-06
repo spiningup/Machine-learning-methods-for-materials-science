@@ -4,15 +4,28 @@ import pylada.periodic_table as pt
 sanderson = {}
 pauling = {}
 radius = {}
+row = {}
+column = {}
+Eionization = {}
 
 for symbol in pt.symbols:
     sanderson[symbol] = getattr(pt, symbol).sanderson
     pauling[symbol] = getattr(pt, symbol).pauling
+    row[symbol] = getattr(pt, symbol).row
+    column[symbol] = getattr(pt, symbol).column
     try:
         radius[symbol] = getattr(pt, symbol).atomic_radius.magnitude
+    except:
+        pass
+
+    try:
+        Eionization[symbol] = float('%6.2f'%(getattr(pt, symbol).ionization_energies[0].magnitude / 1e6))
     except:
         pass
 
 print sanderson
 print pauling
 print radius
+print row
+print column
+print Eionization

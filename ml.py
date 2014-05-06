@@ -1,11 +1,12 @@
 from sklearn import neighbors
+from sklearn.decomposition import PCA
 import numpy as np
 import pickle
 from pylab import *
 from ase.units import Bohr
 from read_json import attribute_tolist, read_json
 from split_dataset import *
-from atomic_constants import pauling, radius, Zval, Eatom, Emadelung, charge, mus
+from atomic_constants import pauling, radius, row, col, Zval, Eatom, Eion, Emadelung, charge, mus
 
 
 def get_dpair():
@@ -58,7 +59,7 @@ class kernel_ridge_regression:
                 M["%s"%(atoms.icsdno)] = self.set_coulumb_matrix(atoms)
             return M # matrix dictionary by icsdno
     
-        elif choice == 2:
+        elif choice == 2: # vladan
             pkl_file = open('Smatrix.pkl', 'rb')
             s_matrix = pickle.load(pkl_file)
             pkl_file.close()
@@ -146,23 +147,37 @@ class kernel_ridge_regression:
                 print sigma, lamda, self.run(sigma, lamda)
     
 
-def knn_regression(mtrain, mcross, n_ngh, ndim=1):
+def get_X(mtrain, mcross):
+
     Etrain = np.array(attribute_tolist(mtrain, attr="Eref"))
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
 
+    ndim = 17
     Xtrain = np.zeros((len(Etrain), ndim)); Xcross = np.zeros((len(Ecross), ndim))
     for mset in (mtrain, mcross):
         for i, atoms in enumerate(mset):
-            elecneg = 0
-            rad = 0
-            for ii, name in enumerate(atoms.names):
-                elecneg += pauling[name] 
-                rad += radius[name]
             nn = atoms.natoms
+            elecneg = []
+            rad = []
+            mass = atoms.masses
+            rowlist = []
+            collist = []
+            Eionization = []
+            for ii, name in enumerate(atoms.names):
+                elecneg.append(pauling[name])
+                rad.append(radius[name])
+                rowlist.append(row[name])
+                collist.append(col[name])
+                Eionization.append(Eion[name])
+
+            val = [atoms.exptvol, np.mean(rad), np.mean(elecneg), np.mean(mass), np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg),
+                   np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization),
+                   atoms.avg_cord, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
+
             if mset == mtrain:
-                Xtrain[i] = atoms.exptvol, rad/nn, elecneg/nn, np.sum(atoms.masses) / nn
+                Xtrain[i] = val
             elif mset == mcross:
-                Xcross[i] = atoms.exptvol, rad/nn, elecneg/nn, np.sum(atoms.masses) / nn
+                Xcross[i] = val
                 
     # feature normalization
     for i in range(ndim):
@@ -170,7 +185,14 @@ def knn_regression(mtrain, mcross, n_ngh, ndim=1):
         xstd = np.std(Xtrain[:,i])
         Xtrain[:,i] = (Xtrain[:, i] - xmean) / xstd
         Xcross[:,i] = (Xcross[:, i] - xmean) / xstd
-    
+
+    return Xtrain, Xcross, Etrain, Ecross
+
+
+def knn_regression(mtrain, mcross, n_ngh):
+    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
+    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=10)
+
     n_neighbors = n_ngh
     knn = neighbors.KNeighborsRegressor(n_neighbors, weights="distance")
     model = knn.fit(Xtrain, Etrain)
@@ -181,9 +203,41 @@ def knn_regression(mtrain, mcross, n_ngh, ndim=1):
         plot(Epredict[i], Ecross[i], '+r')
         text(Epredict[i], Ecross[i], atoms.formula)
     plot(Ecross, Ecross, '-k')
-    show()
-
+#    show()
     return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
+
+
+def krr_regression(mtrain, mcross, sigma=50, lamda=0.01):
+    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
+
+    K_ij = np.zeros((len(Etrain), len(Etrain)))
+    for i in range(len(Etrain)):
+        for j in range(len(Etrain)):
+            d = Xtrain[i] - Xtrain[j]
+            dd = np.sqrt(np.inner(d, d))
+            K_ij[i, j] = np.exp(-dd / sigma)
+        K_ij[i, i] += lamda
+    alpha = np.dot(np.linalg.inv(K_ij), Etrain) # not sure about the order
+
+    def get_MAE(X, E):
+        MAE = 0
+        for i in range(len(E)):
+            Eest = 0 # estimation for set number i
+            for j in range(len(Etrain)):
+                d = Xtrain[j] - X[i]
+                dd = np.sqrt(np.inner(d, d))
+                Eest += alpha[j] * np.exp(-dd / sigma) 
+            MAE += np.abs(Eest - E[i])
+        return MAE / len(E)
+
+    return get_MAE(Xtrain, Etrain), get_MAE(Xcross, Ecross)
+
+def pca_decomposition(Xtrain, Xcross, n_components=7):
+    pca = PCA(n_components=n_components)
+    Xtrain = pca.fit_transform(Xtrain)    
+    Xcross = pca.transform(Xcross)
+    print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
+    return Xtrain, Xcross
 
 
 if __name__ == "__main__":
@@ -197,5 +251,5 @@ if __name__ == "__main__":
     print kRR.run()
     kRR.choose_lamda_sigma([10, 50], [0.01, 0.001])
 
-    print knn_regression(mtrain, mcross, 5, 3, [1, 0.01, 1])
+    print knn_regression(mtrain, mcross, 5)
 
