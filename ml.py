@@ -147,7 +147,7 @@ class kernel_ridge_regression:
                 print sigma, lamda, self.run(sigma, lamda)
     
 
-def get_X(mtrain, mcross):
+def get_X(mtrain, mcross, scaling=1):
 
     Etrain = np.array(attribute_tolist(mtrain, attr="Eref"))
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
@@ -181,31 +181,40 @@ def get_X(mtrain, mcross):
                 
     # feature normalization
     for i in range(ndim):
-        xmean = np.mean(Xtrain[:,i])
-        xstd = np.std(Xtrain[:,i])
-        Xtrain[:,i] = (Xtrain[:, i] - xmean) / xstd
-        Xcross[:,i] = (Xcross[:, i] - xmean) / xstd
+        if scaling == 1: 
+            xmean = np.mean(Xtrain[:,i])
+            xstd = np.std(Xtrain[:,i])
+            Xtrain[:,i] = (Xtrain[:, i] - xmean) / xstd
+            Xcross[:,i] = (Xcross[:, i] - xmean) / xstd
+        elif scaling == 2:
+            Xtrain[:, i] = Xtrain[:, i] - np.min(Xtrain[:, i]) / (np.max(Xtrain[:, i]) - np.min(Xtrain[:, i]))
+            Xcross[:, i] = Xcross[:, i] - np.min(Xcross[:, i]) / (np.max(Xcross[:, i]) - np.min(Xcross[:, i]))
+        elif scaling == 3:
+            Xtrain[:, i] /= np.sqrt(np.inner(Xtrain[:, i], Xtrain[:, i]))
+            Xcross[:, i] /= np.sqrt(np.inner(Xcross[:, i], Xcross[:, i]))
 
     return Xtrain, Xcross, Etrain, Ecross
 
 
 def knn_regression(mtrain, mcross, n_ngh):
     for kernel in ([None, 'rbf', 'poly','cosine']):
-        Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
-        Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
-    
-        n_neighbors = n_ngh
-        knn = neighbors.KNeighborsRegressor(n_neighbors, weights="distance")
-        model = knn.fit(Xtrain, Etrain)
-    
-        Epredict = model.predict(Xcross)
+        for scaling in ([1, 2, 3]):
+            Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling)
+            Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
+        
+            n_neighbors = n_ngh
+            knn = neighbors.KNeighborsRegressor(n_neighbors, weights="distance")
+            model = knn.fit(Xtrain, Etrain)
+        
+            Epredict = model.predict(Xcross)
+            print kernel, scaling, np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
     #    for i, atoms in enumerate(mcross):
     #        print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
     #        plot(Epredict[i], Ecross[i], '+r')
     #        text(Epredict[i], Ecross[i], atoms.formula)
     #    plot(Ecross, Ecross, '-k')
     #    show()
-        print np.nansum(np.abs(Epredict - Ecross)) / len(Ecross) # MAE
+        
     return 
 
 
