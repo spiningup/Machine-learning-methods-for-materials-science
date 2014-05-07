@@ -277,15 +277,17 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
         featurelist = range(10)
         flist, minerror = select_feature(featurelist, minerror)
         print flist, minerror
-
-#    for i, atoms in enumerate(mcross):
-#        print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
-#        plot(Epredict[i], Ecross[i], '+r')
-#        text(Epredict[i], Ecross[i], atoms.formula)
-#    plot(Ecross, Ecross, '-k')
-#    show()
         
     return minerror
+
+def plot_prediction(mset, Epredict, Ecross):
+    for i, atoms in enumerate(mset):
+        plot(Epredict[i], Ecross[i], '+r')
+        if np.abs(Epredict[i] - Ecross[i]) > 0.15:
+            print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
+            text(Epredict[i], Ecross[i], atoms.formula)
+    plot(Ecross, Ecross, '-k')
+    show()
 
 
 def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, kernel="laplacian", elmap=None, elmethod=None):
@@ -301,18 +303,23 @@ def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, kernel="laplacian", elm
         K_ij[i, i] = 1 + lamda
     alpha = np.dot(np.linalg.inv(K_ij), Etrain) # not sure about the order
 
-    def get_MAE(X, E):
+    def get_MAE(mset, X, E):
         MAE = 0
+        Epredict = []
         for i in range(len(E)):
             Eest = 0 # estimation for set number i
             for j in range(len(Etrain)):
                 d = Xtrain[j] - X[i]
                 dd = np.sqrt(np.inner(d, d))
-                Eest += alpha[j] * np.exp(-dd / sigma) 
+                Eest += alpha[j] * get_kernel(dd, sigma, kernel=kernel)
+            Epredict.append(Eest)
             MAE += np.abs(Eest - E[i])
+
+        plot_prediction(mset, Epredict, E)
+
         return MAE / len(E)
 
-    return get_MAE(Xtrain, Etrain), get_MAE(Xcross, Ecross)
+    return get_MAE(mtrain, Xtrain, Etrain), get_MAE(mcross, Xcross, Ecross)
 
 
 def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
