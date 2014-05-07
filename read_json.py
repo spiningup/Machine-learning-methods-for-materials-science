@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from collections import defaultdict
-from atoms import Atoms
+from setup_atoms import Atoms
 
 
 def read_json(filename = "data_RS.json", getadd=False):
