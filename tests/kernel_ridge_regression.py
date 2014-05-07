@@ -18,12 +18,4 @@ MAEtrain, MAEcross =  kRR.run()
 assert np.abs(MAEtrain - 0.61441313521708385) < 1e-6
 assert np.abs(MAEcross - 0.68636581583959533) < 1e-6
 
-
-sigma = 10 ; lamda = 0.001
-kRR = kernel_ridge_regression(mtrain, mcross, lamda, sigma, matrixtype=2)
-MAEtrain, MAEcross =  kRR.run()
-
-assert np.abs(MAEtrain - 0.33073432330166547) < 1e-6
-assert np.abs(MAEcross - 0.4392467996722737) < 1e-6
-
 #kRR.choose_lamda_sigma([10, 50], [0.01, 0.001])
