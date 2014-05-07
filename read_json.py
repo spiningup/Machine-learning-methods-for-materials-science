@@ -58,9 +58,15 @@ def get_unique_elements(mset):
             elements[name] += 1
     return elements
 
+def get_elements_map(mset):
+    elements = get_unique_elements(mset)
+    elmap = {}
+    for i, el in enumerate(elements):
+        elmap[el] = i
+    return elmap
 
 if __name__ == "__main__":
-    getadd = True
+    getadd = False
     mset = read_json("data.json", getadd=getadd)
     Eref = attribute_tolist(mset, attr="Eref", unique=False)
     if getadd:
@@ -68,5 +74,5 @@ if __name__ == "__main__":
         print spacegroup
     elements = get_unique_elements(mset)
     
-    print Eref
-    print elements
+#    print Eref
+    print elements, len(elements)

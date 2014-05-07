@@ -1,16 +1,17 @@
 import pickle
 import numpy as np
 from atomic_constants import pauling, radius, Zval, Eatom, Emadelung, charge, mus
-from read_json import read_json
+from read_json import read_json, get_elements_map
 from split_dataset import *
 from ml import *
 
 mset = read_json("data.json")
 mtest, mset = get_testset(mset)
 mtrain, mcross, mset = get_train_validation_set(mset)
-sigma = 50
-lamda = 0.01
-    
+elmap = get_elements_map(mset)
+
+#sigma = 50
+#lamda = 0.01    
 #kRR = kernel_ridge_regression(mtrain, mcross, lamda, sigma, matrixtype=1)
 #print kRR.run()
 
@@ -24,7 +25,15 @@ lamda = 0.01
 #            print kernel, scaling, weights, knn_regression(mtrain, mcross, 5, kernel=kernel, scaling=scaling, weights=weights)
 #for metric in (["euclidean", "manhattan", "chebyshev", "minkowski",]):
 #    print metric, knn_regression(mtrain, mcross, 5, metric=metric)
+# select features
+#print "knn MAE", knn_regression(mtrain, mcross, 5, selectf=True) 
+
 print "knn MAE", knn_regression(mtrain, mcross, 5)
+for elmethod in ("composition", "constant", 
+                 "coordination", ):
+    print "knn MAE", knn_regression(mtrain, mcross, 5, elmap=elmap, elmethod=elmethod)
+
+
 
 #print krr_regression(mtrain, mcross, 50, 0.01)
 #pca_decomposition(mtrain, mcross)
@@ -39,7 +48,7 @@ print "knn MAE", knn_regression(mtrain, mcross, 5)
 #    for epsilon in ([0, 0.01, 0.1, ]):
 #        for prob in ([True, False]):
 #            print kernel, epsilon, sklearn_regression(mtrain, mcross, method="svr", kernel=kernel, epsilon=epsilon, probability=prob)
-print sklearn_regression(mtrain, mcross, method="svr")
+#print sklearn_regression(mtrain, mcross, method="svr")
 
 
 

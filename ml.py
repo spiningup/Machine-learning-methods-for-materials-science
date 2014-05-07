@@ -4,6 +4,7 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import *
 from sklearn.svm import SVR, NuSVR
+from collections import Counter
 import numpy as np
 import pickle
 from pylab import *
@@ -151,12 +152,13 @@ class kernel_ridge_regression:
                 print sigma, lamda, self.run(sigma, lamda)
     
 
-def get_X(mtrain, mcross, scaling=1, featurelist="all"):
+def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=None):
 
     Etrain = np.array(attribute_tolist(mtrain, attr="Eref"))
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
 
     ndim = 10
+    if elmap is not None: ndim += len(elmap)
     Xtrain = np.zeros((len(Etrain), ndim)); Xcross = np.zeros((len(Ecross), ndim))
     for mset in (mtrain, mcross):
         for i, atoms in enumerate(mset):
@@ -178,12 +180,34 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all"):
                    np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization)]
 #                   atoms.avg_cord]#, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
 
+            if elmap is not None:
+                elval = [0,] * len(elmap)
+                uniqueel = Counter(atoms.names) # get unqiue elements
+                for k1, v1 in uniqueel.items(): # propotion of each elements in cell
+                    if elmethod == "composition":
+                        elval[elmap[k1]] = float(v1) / nn # pauling[atoms.names[ie]] / nn gives exactly the same name
+                    elif elmethod == "constant":
+                        elval[elmap[k1]] = 1./ nn 
+                    elif elmethod == "coordination":
+                        elval[elmap[k1]] = atoms.cord[k1]
+                    else:
+                        "not implemented"
+                        XX
+                val += elval
+
             if mset == mtrain:
                 Xtrain[i] = val
             elif mset == mcross:
                 Xcross[i] = val
-                
-    # feature normalization
+
+    feature_normalization(scaling, Xtrain, Xcross)
+    if featurelist != "all":
+        Xtrain, Xcross = feature_selection(featurelist, Xtrain, Xcross)
+
+    return Xtrain, Xcross, Etrain, Ecross
+
+def feature_normalization(scaling, Xtrain, Xcross):                
+    ndim = Xtrain.shape[1]
     for i in range(ndim):
         if scaling == 1: 
             xmean = np.mean(Xtrain[:,i])
@@ -196,22 +220,23 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all"):
         elif scaling == 3:
             Xtrain[:, i] /= np.sqrt(np.inner(Xtrain[:, i], Xtrain[:, i]))
             Xcross[:, i] /= np.sqrt(np.inner(Xcross[:, i], Xcross[:, i]))
+        else:
+            "not implemented"
+            XX
+    return Xtrain, Xcross
 
-    if featurelist == "all":
-        return Xtrain, Xcross, Etrain, Ecross
-    else:
-        nfeature = len(featurelist)
-        Xtrain2 = np.zeros((len(Etrain), nfeature)); Xcross2 = np.zeros((len(Ecross), nfeature))
-        for i in range(nfeature):
-            Xtrain2[:, i] = Xtrain[:, featurelist[i]]
-            Xcross2[:, i] = Xcross[:, featurelist[i]]
-        return Xtrain2, Xcross2, Etrain, Ecross
-    
+def feature_selection(featurelist, Xtrain, Xcross):
+    nfeature = len(featurelist)
+    Xtrain2 = np.zeros((Xtrain.shape[0], nfeature)); Xcross2 = np.zeros((Xcross.shape[0], nfeature))
+    for i in range(nfeature):
+        Xtrain2[:, i] = Xtrain[:, featurelist[i]]
+        Xcross2[:, i] = Xcross[:, featurelist[i]]
+    return Xtrain2, Xcross2
 
 
-def knn_regression(mtrain, mcross, n_ngh, kernel=None, scaling=1, weights="distance", metric="minkowski", selectf=False):
+def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None, scaling=1, weights="distance", metric="minkowski", selectf=False):
     def train(featurelist):
-        Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling, featurelist)
+        Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling, featurelist, elmap, elmethod)
     #    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
         
         n_neighbors = n_ngh
@@ -240,8 +265,7 @@ def knn_regression(mtrain, mcross, n_ngh, kernel=None, scaling=1, weights="dista
             print "not found"
             return flist, minerror
 
-    ndim = 10
-    featurelist = flist = range(10)
+    featurelist = "all"
     minerror = train(featurelist)
     
     if selectf:
@@ -308,6 +332,7 @@ def sklearn_regression(mtrain, mcross, method='forest', **kwargs):
     elif method == "sgd":        model = SGDRegressor()
     elif method == "svr":        model = SVR(**kwargs)
     elif method == "nusvr":        model = NuSVR()
+    else: "not implemented"; XX
         
     model.fit(Xtrain, Etrain)
     Epredict = model.predict(Xcross)

@@ -6,7 +6,7 @@ from ase.utils import gcd
 from atomic_constants import mus, Eatom
 
 Exptvol = pickle.load(open("exptvol.pkl",'r'))
-avg_cord = json.load(open("avg_cord.json", 'r'))
+cord = json.load(open("cord.json", 'r'))
 
 
 class Atoms:
@@ -33,7 +33,7 @@ class Atoms:
             self.exptvol = Exptvol[self.icsdno][6]
             self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
             self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
-            self.avg_cord = avg_cord[self.icsdno]
+            self.cord = cord[self.icsdno]
 
             if getadd:
                 # get stuff not in json file
