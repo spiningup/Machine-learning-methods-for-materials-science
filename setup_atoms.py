@@ -97,9 +97,9 @@ class Atoms:
 
 
 if __name__ == "__main__":
-    d = json.load(open("data_RS.json", 'r'))
+    d = json.load(open("data.json", 'r'))
     for item in d:
         atoms = Atoms(item)
-        print atoms.icsdno, atoms.formula, atoms.spacegroup, atoms.calcvol * atoms.natoms/atoms.ncell, atoms.exptvol
+        print atoms.icsdno, atoms.formula, atoms.calcvol * atoms.natoms/atoms.ncell, atoms.exptvol
 
     

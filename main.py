@@ -10,27 +10,6 @@ mtest, mset = get_testset(mset)
 mtrain, mcross, mset = get_train_validation_set(mset)
 elmap = get_elements_map(mset)
 
-
-#print "knn MAE", knn_regression(mtrain, mcross, 5)
-for elmethod in (None, "composition", #"constant", 
-                 #"coordination", "inverse_cord", 
-                 "coulomb_ZiZj/d", 
-                 "coulomb_1/d",):
-    print elmethod
-    print "knn MAE", knn_regression(mtrain, mcross, 5, elmap=elmap, elmethod=elmethod)
-    print "krr MAE", krr_regression(mtrain, mcross, 50, 0.01, elmap=elmap, elmethod=elmethod)
-    print "forest", sklearn_regression(mtrain, mcross, "forest", elmap=elmap, elmethod=elmethod)  
-    print "svr",    sklearn_regression(mtrain, mcross, "svr", elmap=elmap, elmethod=elmethod)  
-
-
-
-
-
-
-
-
-
-
-
-    
+elmethod = "composition"
+print "krr MAE", krr_regression(mtrain, mcross, 50, 0.01, elmap=elmap, elmethod=elmethod)    
 
