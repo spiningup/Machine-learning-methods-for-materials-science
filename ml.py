@@ -275,6 +275,7 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
     minerror = train(featurelist)
     
     if selectf:
+        featurelist = range(10)
         flist, minerror = select_feature(featurelist, minerror)
         print flist, minerror
 
