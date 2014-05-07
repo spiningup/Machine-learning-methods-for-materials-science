@@ -20,6 +20,14 @@ def get_dpair():
     pkl_file.close()
     return dpair
 
+def get_kernel(d, sigma, kernel="gaussian"):
+        if kernel == "gaussian":
+            return np.exp(- d**2 / (2.*sigma**2))
+        elif kernel == "laplacian":
+            return np.exp(-np.abs(d)/sigma)
+        else:
+            print "kernel not defined"
+            XX
 
 class kernel_ridge_regression:
     def __init__(self, mtrain, mcross, lamda, sigma, matrixtype=1):
@@ -99,22 +107,13 @@ class kernel_ridge_regression:
             M1 = M["%s"%(mset[i].icsdno)]
             for j in range(nset):
                 M2 = M["%s"%(mset[j].icsdno)]
-                K[i, j] = self.get_kernel(self.distance(M1, M2, mset[i].icsdno, mset[j].icsdno), sigma, kernel=kernel)
+                K[i, j] = get_kernel(self.distance(M1, M2, mset[i].icsdno, mset[j].icsdno), sigma, kernel=kernel)
             K[i, i] += lamda
         print "Finished kernel"
     
         alpha = np.dot(np.linalg.inv(K), Eref) # not sure about the order
         return alpha
-    
-    
-    def get_kernel(self, d, sigma, kernel="gaussian"):
-        if kernel == "gaussian":
-            return np.exp(- d**2 / (2.*sigma**2))
-        elif kernel == "laplacian":
-            return np.exp(-np.abs(d)/sigma)
-        else:
-            print "kernel not defined"
-            XX
+
     
     def estimation(self, mtrain, M, alpha, sigma, mcross=None, Mref=None, kernel="laplacian"):
     
@@ -128,7 +127,7 @@ class kernel_ridge_regression:
             M1 = Mref["%s"%(mcross[i].icsdno)]
             for j in range(nj):
                 M2 = M["%s"%(mtrain[j].icsdno)]
-                Eest += alpha[j] * self.get_kernel(self.distance(M1, M2, mcross[i].icsdno, mtrain[j].icsdno), sigma, kernel=kernel)
+                Eest += alpha[j] * get_kernel(self.distance(M1, M2, mcross[i].icsdno, mtrain[j].icsdno), sigma, kernel=kernel)
             MAE += np.abs(Eest - Eref[i])
     #        print mset[i].formula, mset[i].natoms, mset[i].ncell, Eest, Eref[i], Eest - Eref[i]
         return MAE / ni
@@ -289,16 +288,17 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
     return minerror
 
 
-def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, elmap=None, elmethod=None):
+def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, kernel="laplacian", elmap=None, elmethod=None):
     Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, elmap=elmap, elmethod=elmethod)
 
     K_ij = np.zeros((len(Etrain), len(Etrain)))
     for i in range(len(Etrain)):
-        for j in range(len(Etrain)):
+        for j in range(i+1, len(Etrain)):
             d = Xtrain[i] - Xtrain[j]
             dd = np.sqrt(np.inner(d, d))
-            K_ij[i, j] = np.exp(-dd / sigma)
-        K_ij[i, i] += lamda
+            K_ij[i, j] = get_kernel(dd, sigma, kernel=kernel)
+            K_ij[j, i] = K_ij[i, j]
+        K_ij[i, i] = 1 + lamda
     alpha = np.dot(np.linalg.inv(K_ij), Etrain) # not sure about the order
 
     def get_MAE(X, E):
