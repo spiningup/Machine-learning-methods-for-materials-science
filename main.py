@@ -23,13 +23,6 @@ for elmethod in (None, "composition", #"constant",
     print "svr",    sklearn_regression(mtrain, mcross, "svr", elmap=elmap, elmethod=elmethod)  
 
 
-# svr with rbf kernel is the best
-# gamma (defaul=0) is good, degree does not matter, probablity does not matter when epsilon = 0
-#for kernel in (['rbf','linear', 'poly']):
-#    for epsilon in ([0, 0.01, 0.1, ]):
-#        for prob in ([True, False]):
-#            print kernel, epsilon, sklearn_regression(mtrain, mcross, method="svr", kernel=kernel, epsilon=epsilon, probability=prob)
-#print sklearn_regression(mtrain, mcross, method="svr")
 
 
 
