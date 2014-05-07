@@ -23,10 +23,6 @@ for elmethod in (None, "composition", #"constant",
     print "svr",    sklearn_regression(mtrain, mcross, "svr", elmap=elmap, elmethod=elmethod)  
 
 
-# knn, forest, svr(nusvr) are the best
-#for  method in (["tree", "forest", "bayesridge", "ard", "lars", "lasso", "linear", "passiveagressive", "sgd", "svr", "nusvr"]):
-#    print method, sklearn_regression(mtrain, mcross, method)
-
 # svr with rbf kernel is the best
 # gamma (defaul=0) is good, degree does not matter, probablity does not matter when epsilon = 0
 #for kernel in (['rbf','linear', 'poly']):

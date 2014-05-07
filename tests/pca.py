@@ -3,7 +3,6 @@ os.chdir("../")
 from read_json import read_json
 from split_dataset import *
 from ml import *
-from cStringIO import StringIO
 
 mset = read_json("data.json")
 mtest, mset = get_testset(mset)
