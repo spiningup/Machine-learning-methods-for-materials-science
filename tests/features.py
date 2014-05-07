@@ -1,8 +1,8 @@
 import os
-os.chdir("../")
 from read_json import read_json, get_elements_map
 from split_dataset import *
 from ml import *
+np.random.seed(0)
 
 results0 = {
     None: {

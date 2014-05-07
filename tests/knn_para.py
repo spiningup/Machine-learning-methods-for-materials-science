@@ -1,9 +1,8 @@
 import os
-os.chdir("../")
 from read_json import read_json
 from split_dataset import *
 from ml import *
-
+np.random.seed(0)
 
 mset = read_json("data.json")
 mtest, mset = get_testset(mset)
