@@ -22,8 +22,6 @@ def read_json(filename = "data_RS.json", getadd=False):
             continue
 
         mset.append(atoms)
-
-    print "Size of dataset : ", len(mset)//5*5
     del d
 
     # rank the dataset by Eref
@@ -32,6 +30,8 @@ def read_json(filename = "data_RS.json", getadd=False):
     msetnew = []
     for i in index:
         msetnew.append(mset[i])
+
+    print "Size of dataset : ", len(msetnew)//5*5
 
     return msetnew[:len(msetnew)//5*5] # return set that is divisable by 5, since its 5 fold 
 

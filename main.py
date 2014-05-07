@@ -10,14 +10,6 @@ mtest, mset = get_testset(mset)
 mtrain, mcross, mset = get_train_validation_set(mset)
 elmap = get_elements_map(mset)
 
-#sigma = 50
-#lamda = 0.01    
-#kRR = kernel_ridge_regression(mtrain, mcross, lamda, sigma, matrixtype=1)
-#print kRR.run()
-
-#kRR = kernel_ridge_regression(mtrain, mcross, lamda, sigma, matrixtype=2)
-#kRR.choose_lamda_sigma([10, 50], [0.01, 0.001])
-
 # test knn, kernel=None, scaling=1, weights=distance, metric="minkowsk" are the best options
 #for kernel in ([None, 'rbf', 'poly','cosine']):
 #    for scaling in ([1, 2, 3]):
