@@ -7,6 +7,7 @@ from atomic_constants import mus, Eatom
 
 Exptvol = pickle.load(open("exptvol.pkl",'r'))
 cord = json.load(open("cord.json", 'r'))
+coulomb = json.load(open("coulomb.json", 'r'))
 
 
 class Atoms:
@@ -34,6 +35,8 @@ class Atoms:
             self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
             self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
             self.cord = cord[self.icsdno]
+            self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
+            self.coulomb2 = coulomb["1/d"][self.icsdno]
 
             if getadd:
                 # get stuff not in json file

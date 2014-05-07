@@ -158,7 +158,7 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
 
     ndim = 10
-    if elmap is not None: ndim += len(elmap)
+    if (elmap and elmethod): ndim += len(elmap)
     Xtrain = np.zeros((len(Etrain), ndim)); Xcross = np.zeros((len(Ecross), ndim))
     for mset in (mtrain, mcross):
         for i, atoms in enumerate(mset):
@@ -180,16 +180,22 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
                    np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization)]
 #                   atoms.avg_cord]#, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
 
-            if elmap is not None:
+            if (elmap and elmethod):
                 elval = [0,] * len(elmap)
                 uniqueel = Counter(atoms.names) # get unqiue elements
                 for k1, v1 in uniqueel.items(): # propotion of each elements in cell
                     if elmethod == "composition":
-                        elval[elmap[k1]] = float(v1) / nn # pauling[atoms.names[ie]] / nn gives exactly the same name
+                        elval[elmap[k1]] = float(v1) / nn # pauling[k1] / nn gives exactly the same name
                     elif elmethod == "constant":
                         elval[elmap[k1]] = 1./ nn 
                     elif elmethod == "coordination":
                         elval[elmap[k1]] = atoms.cord[k1]
+                    elif elmethod == "inverse_cord":
+                        elval[elmap[k1]] = float(v1) / nn /atoms.cord[k1]
+                    elif elmethod == "coulomb_ZiZj/d":
+                        elval[elmap[k1]] = atoms.coulomb1[k1]
+                    elif elmethod == "coulomb_1/d":
+                        elval[elmap[k1]] = atoms.coulomb2[k1]
                     else:
                         "not implemented"
                         XX
@@ -282,8 +288,8 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
     return minerror
 
 
-def krr_regression(mtrain, mcross, sigma=50, lamda=0.01):
-    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
+def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, elmap=None, elmethod=None):
+    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, elmap=elmap, elmethod=elmethod)
 
     K_ij = np.zeros((len(Etrain), len(Etrain)))
     for i in range(len(Etrain)):
@@ -319,8 +325,8 @@ def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
 #    if kernel is None:  print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
     return Xtrain, Xcross
     
-def sklearn_regression(mtrain, mcross, method='forest', **kwargs):
-    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross)
+def sklearn_regression(mtrain, mcross, method='forest', elmap=None, elmethod=None, **kwargs):
+    Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, elmap=elmap, elmethod=elmethod)
     if   method == "tree":       model = DecisionTreeRegressor()
     elif method == "forest":     model = RandomForestRegressor()
     elif method == "bayesridge": model = BayesianRidge()

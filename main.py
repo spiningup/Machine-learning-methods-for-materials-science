@@ -28,14 +28,18 @@ elmap = get_elements_map(mset)
 # select features
 #print "knn MAE", knn_regression(mtrain, mcross, 5, selectf=True) 
 
-print "knn MAE", knn_regression(mtrain, mcross, 5)
-for elmethod in ("composition", "constant", 
-                 "coordination", ):
+#print "knn MAE", knn_regression(mtrain, mcross, 5)
+for elmethod in (None, "composition", #"constant", 
+                 #"coordination", "inverse_cord", 
+                 "coulomb_ZiZj/d", 
+                 "coulomb_1/d",):
+    print elmethod
     print "knn MAE", knn_regression(mtrain, mcross, 5, elmap=elmap, elmethod=elmethod)
+    print "krr MAE", krr_regression(mtrain, mcross, 50, 0.01, elmap=elmap, elmethod=elmethod)
+    print "forest", sklearn_regression(mtrain, mcross, "forest", elmap=elmap, elmethod=elmethod)  
+    print "svr",    sklearn_regression(mtrain, mcross, "svr", elmap=elmap, elmethod=elmethod)  
 
 
-
-#print krr_regression(mtrain, mcross, 50, 0.01)
 #pca_decomposition(mtrain, mcross)
 
 # knn, forest, svr(nusvr) are the best
