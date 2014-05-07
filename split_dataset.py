@@ -2,9 +2,6 @@ import numpy as np
 
 # five fold cross validation
 # mset is sorted by Eref
-
-#np.random.seed(0)
-
 def get_testset(mset):
     mtest = []
     i = 0
