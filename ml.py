@@ -315,7 +315,7 @@ def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, kernel="laplacian", elm
             Epredict.append(Eest)
             MAE += np.abs(Eest - E[i])
 
-        plot_prediction(mset, Epredict, E)
+#        plot_prediction(mset, Epredict, E)
 
         return MAE / len(E)
 
