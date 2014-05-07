@@ -10,15 +10,6 @@ mtest, mset = get_testset(mset)
 mtrain, mcross, mset = get_train_validation_set(mset)
 elmap = get_elements_map(mset)
 
-# test knn, kernel=None, scaling=1, weights=distance, metric="minkowsk" are the best options
-#for kernel in ([None, 'rbf', 'poly','cosine']):
-#    for scaling in ([1, 2, 3]):
-#        for weights in (["distance", "uniform"]):
-#            print kernel, scaling, weights, knn_regression(mtrain, mcross, 5, kernel=kernel, scaling=scaling, weights=weights)
-#for metric in (["euclidean", "manhattan", "chebyshev", "minkowski",]):
-#    print metric, knn_regression(mtrain, mcross, 5, metric=metric)
-# select features
-#print "knn MAE", knn_regression(mtrain, mcross, 5, selectf=True) 
 
 #print "knn MAE", knn_regression(mtrain, mcross, 5)
 for elmethod in (None, "composition", #"constant", 
@@ -31,8 +22,6 @@ for elmethod in (None, "composition", #"constant",
     print "forest", sklearn_regression(mtrain, mcross, "forest", elmap=elmap, elmethod=elmethod)  
     print "svr",    sklearn_regression(mtrain, mcross, "svr", elmap=elmap, elmethod=elmethod)  
 
-
-#pca_decomposition(mtrain, mcross)
 
 # knn, forest, svr(nusvr) are the best
 #for  method in (["tree", "forest", "bayesridge", "ard", "lars", "lasso", "linear", "passiveagressive", "sgd", "svr", "nusvr"]):

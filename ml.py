@@ -323,7 +323,7 @@ def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
 
     Xtrain = pca.fit_transform(Xtrain)    
     Xcross = pca.transform(Xcross)
-#    if kernel is None:  print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
+    if kernel is None:  print(pca.explained_variance_ratio_), (pca.explained_variance_ratio_).sum()
     return Xtrain, Xcross
     
 def sklearn_regression(mtrain, mcross, method='forest', elmap=None, elmethod=None, **kwargs):
