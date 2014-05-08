@@ -1,6 +1,6 @@
 import numpy as np
 from read_json import read_json
-from atomic_constants import pauling, radius, Zval, Eatom, Emadelung, charge, mus
+from atomic_constants import pauling, radius, Eatom, Emadelung, charge, mus
 
 def write_csv(strtype='general'):
     if strtype == "general":

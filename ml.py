@@ -11,7 +11,7 @@ from pylab import *
 from ase.units import Bohr
 from read_json import attribute_tolist, read_json
 from split_dataset import *
-from atomic_constants import pauling, radius, row, col, Zval, Eatom, Eion, Emadelung, charge, mus
+from atomic_constants import pauling, radius, row, col, Eatom, Eion, Emadelung, charge, mus
 
 
 def get_dpair():
@@ -177,6 +177,7 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
 
             val = [atoms.exptvol, np.mean(rad), np.mean(elecneg), np.mean(mass), np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg),
                    np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization)]
+#, np.max(Eionization)-np.min(Eionization), #np.mean(rowlist), np.mean(collist), 
 #                   atoms.avg_cord]#, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
 
             if (elmap and elmethod):
@@ -208,7 +209,7 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
     feature_normalization(scaling, Xtrain, Xcross)
     if featurelist != "all":
         Xtrain, Xcross = feature_selection(featurelist, Xtrain, Xcross)
-
+        
     return Xtrain, Xcross, Etrain, Ecross
 
 def feature_normalization(scaling, Xtrain, Xcross):                
