@@ -6,49 +6,49 @@ from collections import Counter, defaultdict
 from ase.utils import gcd
 from atomic_constants import mus, Eatom
 
-Exptvol = pickle.load(open("exptvol.pkl",'r'))
-cord = json.load(open("cord.json", 'r'))
-coulomb = json.load(open("coulomb.json", 'r'))
-
+def read_helper_data(prefix="."):
+    Exptvol = pickle.load(open("%s/exptvol.pkl"%(prefix),'r'))
+    cord = json.load(open("%s/cord.json"%(prefix), 'r'))
+    coulomb = json.load(open("%s/coulomb.json"%(prefix), 'r'))
+    return Exptvol, cord, coulomb
 
 class Atoms:
-    def __init__(self, item=None, energytype="atomization", getadd=False):
-        if item is not None:
-            self.masses = np.array(item["atommasses_amu"])
-            self.Z = np.array(item["atomvalences"])
-            self.names = item["atomnames"]
-            self.positions = np.array(item["finalcartposmat"])
-            self.natoms = int(item["numatom"])
-            self.cell = np.array(item["finalbasismat"])
-            self.formula = item["formula"]
-            self.ncell = self.get_number_of_primitive_cell(item["atommasses_amu"])
-            self.Eref = float(item["energyperatom"])
-            for name in self.names:
-                if energytype == "atomization":
-                    self.Eref -= Eatom[name] / self.natoms
-                elif energytype == "formation":
-                    if name not in mus.keys(): 
-                        self.Eref = None
-                        break
-                    
-#            self.eigenmat = np.array(item["eigenmat"])
-            icsdstr = "{0:06d}".format(int(item["icsdnum"]))
-            self.icsdno = icsdstr
-            self.exptvol = Exptvol[self.icsdno][6]
-            self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
-            self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
-            self.cord = cord[self.icsdno]
-            self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
-            self.coulomb2 = coulomb["1/d"][self.icsdno]
+    def __init__(self, item, Exptvol, cord, coulomb, energytype="atomization"):
+        self.masses = np.array(item["atommasses_amu"])
+        self.Z = np.array(item["atomvalences"])
+        self.names = item["atomnames"]
+        self.positions = np.array(item["finalcartposmat"])
+        self.natoms = int(item["numatom"])
+        self.cell = np.array(item["finalbasismat"])
+        self.formula = item["formula"]
+        self.ncell = self.get_number_of_primitive_cell(item["atommasses_amu"])
+        self.Eref = float(item["energyperatom"])
+        for name in self.names:
+            if energytype == "atomization":
+                self.Eref -= Eatom[name] / self.natoms
+            elif energytype == "formation":
+                if name not in mus.keys(): 
+                    self.Eref = None
+                    break
+                
+#        self.eigenmat = np.array(item["eigenmat"])
+        icsdstr = "{0:06d}".format(int(item["icsdnum"]))
+        self.icsdno = icsdstr
+        self.exptvol = Exptvol[self.icsdno][6]
+        self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
+        self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
+        self.cord = cord[self.icsdno]
+        self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
+        self.coulomb2 = coulomb["1/d"][self.icsdno]
 
-            if getadd:
-                # get stuff not in json file
-                # get spacegroup by its name and icsdno
-                name = self.names[np.argsort(self.masses)[0]]
-                self.spacegroup, self.exptvol = self.get_spacegroup_and_volume(name, icsdstr, self.natoms)
+        if 0:
+            # get stuff not in json file
+            # get spacegroup by its name and icsdno
+            name = self.names[np.argsort(self.masses)[0]]
+            self.spacegroup, self.exptvol = self.get_spacegroup_and_volume(name, icsdstr, self.natoms)
 
-            # calculated volume per atom
-            self.calcvol = float(item["finalvolume_ang3"]) / self.natoms #self.ncell
+        # calculated volume per atom
+        self.calcvol = float(item["finalvolume_ang3"]) / self.natoms #self.ncell
 
 
     def get_number_of_primitive_cell(self, Z):

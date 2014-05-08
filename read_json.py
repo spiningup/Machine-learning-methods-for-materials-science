@@ -1,15 +1,20 @@
 import json
 import numpy as np
 from collections import defaultdict
-from setup_atoms import Atoms
+from setup_atoms import Atoms, read_helper_data
 
 
-def read_json(filename = "data.json", energytype="atomization", getadd=False):
+def read_json(filename = "data.json", energytype="atomization"):
     d = json.load(open(filename, 'r'))
     formulas = []
     mset = []
+    if filename.split("/")[0] == filename:
+        prefix = "."
+    else:
+        prefix = filename.split("/")[0]
+    Exptvol, cord, coulomb = read_helper_data(prefix)
     for i, item in enumerate(d):
-        atoms = Atoms(item, energytype, getadd=getadd)
+        atoms = Atoms(item, Exptvol, cord, coulomb, energytype)
         if atoms.Eref is None: continue
 #        if "La" in atoms.names: continue
 #        if "Y" in atoms.names: continue
@@ -70,12 +75,8 @@ def get_elements_map(mset):
     return elmap
 
 if __name__ == "__main__":
-    getadd = False
-    mset = read_json("data.json", getadd=getadd)
+    mset = read_json("data.json")
     Eref = attribute_tolist(mset, attr="Eref", unique=False)
-    if getadd:
-        spacegroup = attribute_tolist(mset, attr="spacegroup", unique=True)
-        print spacegroup
     elements = get_unique_elements(mset)
     
 #    print Eref
