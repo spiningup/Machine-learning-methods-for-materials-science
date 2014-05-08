@@ -4,22 +4,26 @@ from collections import defaultdict
 from setup_atoms import Atoms
 
 
-def read_json(filename = "data_RS.json", getadd=False):
+def read_json(filename = "data.json", energytype="atomization", getadd=False):
     d = json.load(open(filename, 'r'))
     formulas = []
     mset = []
     for i, item in enumerate(d):
-        atoms = Atoms(item, getadd=getadd)
+        atoms = Atoms(item, energytype, getadd=getadd)
+        if atoms.Eref is None: continue
+#        if "La" in atoms.names: continue
+#        if "Y" in atoms.names: continue
 
         # ignore formula already in dataset
-        if atoms.formula not in formulas: 
-            formulas.append(atoms.formula)
+        formula = " ".join(sorted(atoms.formula.split()))
+        atoms.formula = formula
+        if formula not in formulas: 
+            formulas.append(formula)
         else:
             continue
 
         volerror = np.abs(atoms.calcvol - atoms.exptvol) / atoms.exptvol 
-        if volerror > 0.2:
-            continue
+        if volerror > 0.2: continue
 
         mset.append(atoms)
     del d
@@ -76,3 +80,6 @@ if __name__ == "__main__":
     
 #    print Eref
     print elements, len(elements)
+
+#    for atoms in mset:
+#        print atoms.formula, atoms.Eref
