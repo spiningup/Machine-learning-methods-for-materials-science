@@ -11,7 +11,7 @@ from pylab import *
 from ase.units import Bohr
 from read_json import attribute_tolist, read_json
 from split_dataset import *
-from atomic_constants import pauling, radius, row, col, Eatom, Eion, Emadelung, charge, mus
+from atomic_constants import pauling, radius, row, col, Eatom, Eion, Emadelung, charge, mus, atomic_number
 
 
 def get_dpair():
@@ -168,15 +168,18 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
             rowlist = []
             collist = []
             Eionization = []
+            Eatomicnum = []
             for ii, name in enumerate(atoms.names):
                 elecneg.append(pauling[name])
                 rad.append(radius[name])
                 rowlist.append(row[name])
                 collist.append(col[name])
                 Eionization.append(Eion[name])
+                Eatomicnum.append(atomic_number[name])
 
             val = [atoms.exptvol, np.mean(rad), np.mean(elecneg), np.mean(mass), np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg),
                    np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization)]
+#                   np.max(Eatomicnum)-np.min(Eatomicnum)] 
 #, np.max(Eionization)-np.min(Eionization), #np.mean(rowlist), np.mean(collist), 
 #                   atoms.avg_cord]#, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
 
@@ -303,24 +306,44 @@ def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, kernel="laplacian", elm
             K_ij[j, i] = K_ij[i, j]
         K_ij[i, i] = 1 + lamda
     alpha = np.dot(np.linalg.inv(K_ij), Etrain) # not sure about the order
+    
+#    def get_MAE(mset, X, E):
+#        MAE = 0
+#        Epredict = []
+#        for i in range(len(E)):
+#            Eest = 0 # estimation for set number i
+#            for j in range(len(Etrain)):
+#                d = Xtrain[j] - X[i]
+#                dd = np.sqrt(np.inner(d, d))
+#                Eest += alpha[j] * get_kernel(dd, sigma, kernel=kernel)
+#            Epredict.append(Eest)
+#            MAE += np.abs(Eest - E[i])
+#
+#        plot_prediction(mset, Epredict, E)
+#        return MAE / len(E)
 
     def get_MAE(mset, X, E):
         MAE = 0
         Epredict = []
         for i in range(len(E)):
-            Eest = 0 # estimation for set number i
+            Eest = [] # estimation for set number i
             for j in range(len(Etrain)):
                 d = Xtrain[j] - X[i]
                 dd = np.sqrt(np.inner(d, d))
-                Eest += alpha[j] * get_kernel(dd, sigma, kernel=kernel)
-            Epredict.append(Eest)
-            MAE += np.abs(Eest - E[i])
+                Eest.append(alpha[j] * get_kernel(dd, sigma, kernel=kernel))
 
-#        plot_prediction(mset, Epredict, E)
+            if np.abs(np.sum(Eest) - E[i]) > 0.1:
+                print mcross[i].formula, np.abs(np.sum(Eest) - E[i])
+                hist(Eest, 50)
+                show()
+
+            Epredict.append(np.sum(Eest))
+            MAE += np.abs(np.sum(Eest) - E[i])
 
         return MAE / len(E)
 
-    return get_MAE(mtrain, Xtrain, Etrain), get_MAE(mcross, Xcross, Ecross)
+    return None, get_MAE(mcross, Xcross, Ecross)
+#    return get_MAE(mtrain, Xtrain, Etrain), get_MAE(mcross, Xcross, Ecross)
 
 
 def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):

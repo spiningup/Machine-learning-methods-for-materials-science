@@ -7,12 +7,14 @@ radius = {}
 row = {}
 column = {}
 Eionization = {}
+atomic_number = {}
 
 for symbol in pt.symbols:
     sanderson[symbol] = getattr(pt, symbol).sanderson
     pauling[symbol] = getattr(pt, symbol).pauling
     row[symbol] = getattr(pt, symbol).row
     column[symbol] = getattr(pt, symbol).column
+    atomic_number[symbol] = getattr(pt, symbol).atomic_number
     try:
         radius[symbol] = getattr(pt, symbol).atomic_radius.magnitude
     except:
@@ -29,3 +31,4 @@ print radius
 print row
 print column
 print Eionization
+print atomic_number
