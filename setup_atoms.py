@@ -4,7 +4,7 @@ import commands
 import os
 from collections import Counter, defaultdict
 from ase.utils import gcd
-from atomic_constants import mus, Eatom
+from atomic_constants import mus, Eatom, atomic_weight
 
 def read_helper_data(prefix="."):
     Exptvol = pickle.load(open("%s/exptvol.pkl"%(prefix),'r'))
@@ -14,45 +14,58 @@ def read_helper_data(prefix="."):
 
 class Atoms:
     def __init__(self, item, Exptvol, cord, coulomb, energytype="atomization"):
-        self.masses = np.array(item["atommasses_amu"])
-        self.Z = np.array(item["atomvalences"])
-        self.names = item["atomnames"]
-        self.positions = np.array(item["finalcartposmat"])
-        self.natoms = int(item["numatom"])
-        self.cell = np.array(item["finalbasismat"])
-        self.formula = item["formula"]
-        self.ncell = self.get_number_of_primitive_cell(item["atommasses_amu"])
-        if energytype == "atomization" or energytype == "formation":
-            self.Eref = float(item["energyperatom"])
-        elif energytype == "bandgap":
-            self.Eref = item["bandgapindirect"]
-        self.bandgap = item["bandgapindirect"]
-        for name in self.names:
-            if energytype == "atomization":
-                self.Eref -= Eatom[name] / self.natoms
-            elif energytype == "formation":
-                if name not in mus.keys(): 
-                    self.Eref = None
-                    break
+        if "atommasses_amu" in item.keys():
+            self.masses = np.array(item["atommasses_amu"])
+            self.Z = np.array(item["atomvalences"])
+            self.names = item["atomnames"]
+            self.positions = np.array(item["finalcartposmat"])
+            self.natoms = int(item["numatom"])
+            self.cell = np.array(item["finalbasismat"])
+            self.formula = item["formula"]
+            self.ncell = self.get_number_of_primitive_cell(item["atommasses_amu"])
+            if energytype == "atomization" or energytype == "formation":
+                self.Eref = float(item["energyperatom"])
+            elif energytype == "bandgap":
+                self.Eref = item["bandgapindirect"]
+                self.bandgap = item["bandgapindirect"]
+            for name in self.names:
+                if energytype == "atomization":
+                    self.Eref -= Eatom[name] / self.natoms
+                elif energytype == "formation":
+                    if name not in mus.keys(): 
+                        self.Eref = None
+                        break
+    
+    #        self.eigenmat = np.array(item["eigenmat"])
+            icsdstr = "{0:06d}".format(int(item["icsdnum"]))
+            self.icsdno = icsdstr
+            self.exptvol = Exptvol[self.icsdno][6]
+            self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
+            self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
+            self.cord = cord[self.icsdno]
+            self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
+            self.coulomb2 = coulomb["1/d"][self.icsdno]
+    
+            if 0:
+                # get stuff not in json file
+                # get spacegroup by its name and icsdno
+                name = self.names[np.argsort(self.masses)[0]]
+                self.spacegroup, self.exptvol = self.get_spacegroup_and_volume(name, icsdstr, self.natoms)
+    
+            # calculated volume per atom
+            self.calcvol = float(item["finalvolume_ang3"]) / self.natoms #self.ncell
 
-#        self.eigenmat = np.array(item["eigenmat"])
-        icsdstr = "{0:06d}".format(int(item["icsdnum"]))
-        self.icsdno = icsdstr
-        self.exptvol = Exptvol[self.icsdno][6]
-        self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
-        self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
-        self.cord = cord[self.icsdno]
-        self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
-        self.coulomb2 = coulomb["1/d"][self.icsdno]
-
-        if 0:
-            # get stuff not in json file
-            # get spacegroup by its name and icsdno
-            name = self.names[np.argsort(self.masses)[0]]
-            self.spacegroup, self.exptvol = self.get_spacegroup_and_volume(name, icsdstr, self.natoms)
-
-        # calculated volume per atom
-        self.calcvol = float(item["finalvolume_ang3"]) / self.natoms #self.ncell
+        elif "gap" in item.keys():
+            self.formula = item["formula"]
+            self.Eref = item["gap"]
+            self.names = []
+            for i in self.formula.split():
+                if i.isdigit():
+                    self.names += [self.names[-1],] * (int(i)-1)
+                else:
+                    self.names.append(i)
+            self.masses = [atomic_weight[name] for name in self.names]
+            self.natoms = len(self.names)
 
 
     def get_number_of_primitive_cell(self, Z):
