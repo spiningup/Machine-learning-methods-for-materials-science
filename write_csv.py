@@ -6,7 +6,7 @@ def write_csv(strtype='general'):
     if strtype == "general":
         mset = read_json(filename = "data.json")
         f = open('general.csv', 'w')
-        print >> f, "(formula, std.mass, sum.mass, std.elecneg, sum.elecneg, calcvol, std.radius, sum.radius, Ecoh"
+        print >> f, "(formula, std.mass, sum.mass, std.elecneg, sum.elecneg, calcvol, std.radius, sum.radius, Ecoh, bandgap"
         for atoms in mset:
             elecneg = []
             rad = []
@@ -19,8 +19,8 @@ def write_csv(strtype='general'):
             std_mass = np.std(atoms.masses)
             sum_radius = np.sum(rad) / len(rad)
             std_radius = np.std(rad)
-            print >>f, "%s, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.formula, std_mass, sum_mass, std_elecneg, sum_elecneg, 
-                                                                                     atoms.calcvol, std_radius, sum_radius, atoms.Eref)
+            print >>f, "%s, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.formula, std_mass, sum_mass, std_elecneg, sum_elecneg, 
+                                                                                     atoms.calcvol, std_radius, sum_radius, atoms.Eref, atoms.bandgap)
     elif strtype == "RS":
         mset = read_json(filename = "data_RS.json")
         f = open('RS.csv', 'w')
@@ -47,4 +47,4 @@ def write_csv(strtype='general'):
 if __name__ == "__main__":
 
     write_csv("general")
-    write_csv("RS")
+#    write_csv("RS")
