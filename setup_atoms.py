@@ -22,7 +22,11 @@ class Atoms:
         self.cell = np.array(item["finalbasismat"])
         self.formula = item["formula"]
         self.ncell = self.get_number_of_primitive_cell(item["atommasses_amu"])
-        self.Eref = float(item["energyperatom"])
+        if energytype == "atomization" or energytype == "formation":
+            self.Eref = float(item["energyperatom"])
+        elif energytype == "bandgap":
+            self.Eref = item["bandgapindirect"]
+        self.bandgap = item["bandgapindirect"]
         for name in self.names:
             if energytype == "atomization":
                 self.Eref -= Eatom[name] / self.natoms
@@ -30,7 +34,7 @@ class Atoms:
                 if name not in mus.keys(): 
                     self.Eref = None
                     break
-                
+
 #        self.eigenmat = np.array(item["eigenmat"])
         icsdstr = "{0:06d}".format(int(item["icsdnum"]))
         self.icsdno = icsdstr
