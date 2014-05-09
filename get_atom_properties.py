@@ -9,6 +9,7 @@ column = {}
 Eionization = {}
 atomic_number = {}
 Eaffinity = {}
+atomic_weight = {}
 
 for symbol in pt.symbols:
     sanderson[symbol] = getattr(pt, symbol).sanderson
@@ -16,6 +17,8 @@ for symbol in pt.symbols:
     row[symbol] = getattr(pt, symbol).row
     column[symbol] = getattr(pt, symbol).column
     atomic_number[symbol] = getattr(pt, symbol).atomic_number
+    atomic_weight[symbol] = getattr(pt, symbol).atomic_weight
+    
     try:
         radius[symbol] = getattr(pt, symbol).atomic_radius.magnitude
     except:
@@ -39,3 +42,4 @@ print column
 print Eionization
 print atomic_number
 print Eaffinity
+print atomic_weight
