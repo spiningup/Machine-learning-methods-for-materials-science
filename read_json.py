@@ -16,6 +16,7 @@ def read_json(filename = "data.json", energytype="atomization"):
     for i, item in enumerate(d):
         atoms = Atoms(item, Exptvol, cord, coulomb, energytype)
         if atoms.Eref is None: continue
+        if atoms.bandgap < 0.05 or atoms.bandgap > 6.: continue
 #        if len(atoms.formula.split()) <=2 : continue
 #        if "La" in atoms.names: continue
 #        if "Y" in atoms.names: continue
