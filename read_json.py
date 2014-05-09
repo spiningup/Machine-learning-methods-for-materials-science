@@ -2,7 +2,7 @@ import json
 import numpy as np
 from collections import defaultdict
 from setup_atoms import Atoms, read_helper_data
-
+from atomic_constants import pauling, col
 
 def read_json(filename = "data.json", energytype="atomization"):
     d = json.load(open(filename, 'r'))
@@ -13,10 +13,19 @@ def read_json(filename = "data.json", energytype="atomization"):
     else:
         prefix = filename.split("/")[0]
     Exptvol, cord, coulomb = read_helper_data(prefix)
+    naelements = [name for name, value in pauling.items() if value is None]
+    naelements = [name for name, value in col.items() if value in ["Lanthanide", "Actinide"]]
+
     for i, item in enumerate(d):
         atoms = Atoms(item, Exptvol, cord, coulomb, energytype)
         if atoms.Eref is None: continue
-        if atoms.bandgap < 0.05 or atoms.bandgap > 6.: continue
+        found = False
+        for el in naelements:
+            if el in atoms.names: 
+                found = True
+                break
+        if found : continue
+#        if atoms.bandgap < 0.05 or atoms.bandgap > 6.: continue
 #        if len(atoms.formula.split()) <=2 : continue
 #        if "La" in atoms.names: continue
 #        if "Y" in atoms.names: continue
@@ -29,8 +38,9 @@ def read_json(filename = "data.json", energytype="atomization"):
         else:
             continue
 
-        volerror = np.abs(atoms.calcvol - atoms.exptvol) / atoms.exptvol 
-        if volerror > 0.2: continue
+        if "atommasses_amu" in item.keys():
+            volerror = np.abs(atoms.calcvol - atoms.exptvol) / atoms.exptvol 
+            if volerror > 0.2: continue
 
         mset.append(atoms)
     del d
