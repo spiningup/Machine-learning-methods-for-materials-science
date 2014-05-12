@@ -12,6 +12,7 @@ for item in items:
     index, A, i, B, j, gap, T = item.split()
     formula = " ".join([A, i, B, j])
     formula = formula.replace(" NA","")
+    if i == "NA" and j == "NA" and B != "NA": continue
     if gap != "NA":
         bandgaps[formula].append([int(index), float(gap), float(T)])
 
