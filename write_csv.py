@@ -6,7 +6,7 @@ def write_csv(strtype='general'):
     if strtype == "general":
         mset = read_json(filename = "data.json")
         f = open('general.csv', 'w')
-        print >> f, "(formula, std.mass, sum.mass, std.elecneg, sum.elecneg, calcvol, std.radius, sum.radius, Ecoh, bandgap"
+        print >> f, "(formula, std.mass, mean.mass, std.elecneg, mean.elecneg, calcvol, std.radius, mean.radius, Ecoh"
         for atoms in mset:
             elecneg = []
             rad = []
@@ -19,8 +19,8 @@ def write_csv(strtype='general'):
             std_mass = np.std(atoms.masses)
             sum_radius = np.sum(rad) / len(rad)
             std_radius = np.std(rad)
-            print >>f, "%s, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.formula, std_mass, sum_mass, std_elecneg, sum_elecneg, 
-                                                                                     atoms.calcvol, std_radius, sum_radius, atoms.Eref, atoms.bandgap)
+            print >>f, "%s, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.formula, std_mass, sum_mass, std_elecneg, sum_elecneg, 
+                                                                                     atoms.calcvol, std_radius, sum_radius, atoms.Eref)
     elif strtype == "RS":
         mset = read_json(filename = "data_RS.json")
         f = open('RS.csv', 'w')
@@ -44,7 +44,31 @@ def write_csv(strtype='general'):
             print >>f, "%s, %s, %s, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.names[0], atoms.names[1], el, atoms.masses[0] + atoms.masses[1], np.abs(atoms.masses[0] - atoms.masses[1]), (elecneg1 + elecneg2), delecneg, atoms.calcvol, radius[atoms.names[0]] + radius[atoms.names[1]], np.abs(radius[atoms.names[0]] - radius[atoms.names[1]]), dpos, Elatt, atoms.Eref)
 
 
+    elif strtype == "exptgap":
+        mset = read_json(filename = "exptgap.json")
+        f = open('exptgap.csv', 'w')
+        print >> f, "(formula, std.mass, sum.mass, diff.mass, std.elecneg, sum.elecneg, diff.elecneg, std.radius, sum.radius, diff.radius, bandgap"
+        for atoms in mset:
+            elecneg = []
+            rad = []
+            for name in atoms.names:
+                elecneg.append(pauling[name])
+                rad.append(radius[name])
+            sum_elecneg = np.sum(elecneg) / len(elecneg)
+            std_elecneg = np.std(elecneg) 
+            diff_elecneg = np.max(elecneg) - np.min(elecneg)
+            sum_mass = np.sum(atoms.masses) / len(atoms.masses)
+            std_mass = np.std(atoms.masses)
+            diff_mass = np.max(atoms.masses) - np.min(atoms.masses)
+            sum_radius = np.sum(rad) / len(rad)
+            std_radius = np.std(rad)
+            diff_radius = np.max(rad) - np.min(rad)
+            print >>f, "%s,  %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.formula, std_mass, sum_mass, diff_mass, 
+                                                                                                    std_elecneg, sum_elecneg, diff_elecneg,
+                                                                                                    std_radius, sum_radius, diff_radius, atoms.Eref)
+
 if __name__ == "__main__":
 
     write_csv("general")
 #    write_csv("RS")
+#    write_csv("exptgap")
