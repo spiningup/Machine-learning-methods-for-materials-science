@@ -35,6 +35,8 @@ class Atoms:
                     if name not in mus.keys(): 
                         self.Eref = None
                         break
+                    else:
+                        self.Eref -= mus[name] / self.natoms
     
     #        self.eigenmat = np.array(item["eigenmat"])
             icsdstr = "{0:06d}".format(int(item["icsdnum"]))
