@@ -57,9 +57,14 @@ class Atoms:
             # calculated volume per atom
             self.calcvol = float(item["finalvolume_ang3"]) / self.natoms #self.ncell
 
-        elif "gap" in item.keys():
+        else:
             self.formula = item["formula"]
-            self.Eref = item["gap"]
+            if "gap" in item.keys():
+                self.Eref = item["gap"]
+            elif "FERE" in item.keys():
+                self.Eref = item["FERE"]
+            else:
+                self.Eref = None
             self.names = []
             for i in self.formula.split():
                 if i.isdigit():
@@ -68,6 +73,11 @@ class Atoms:
                     self.names.append(i)
             self.masses = [atomic_weight[name] for name in self.names]
             self.natoms = len(self.names)
+
+            # the energies are by default formation energies 
+            if energytype == "atomization":
+                for name in self.names:
+                    self.Eref += mus[name] / self.natoms - Eatom[name] / self.natoms
 
 
     def get_number_of_primitive_cell(self, Z):
