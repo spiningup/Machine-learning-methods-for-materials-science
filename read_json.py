@@ -31,8 +31,9 @@ def read_json(filename = "data.json", energytype="atomization"):
 #        if "Y" in atoms.names: continue
 
         # ignore formula already in dataset
-        formula = " ".join(sorted(atoms.formula.split()))
-        atoms.formula = formula
+#        formula = " ".join(sorted(atoms.formula.split()))
+#        atoms.formula = formula
+        formula = atoms.formula
         if formula not in formulas: 
             formulas.append(formula)
         else:
@@ -54,7 +55,7 @@ def read_json(filename = "data.json", energytype="atomization"):
 
     print "Size of dataset : ", len(msetnew)//5*5
 
-    return msetnew[:len(msetnew)//5*5] # return set that is divisable by 5, since its 5 fold 
+    return msetnew # return set that is divisable by 5, since its 5 fold 
 
 def attribute_tolist(mset, attr="Eref", unique=False):
     if not unique:
@@ -90,8 +91,8 @@ if __name__ == "__main__":
     mset = read_json("data.json")
     Eref = attribute_tolist(mset, attr="Eref", unique=False)
     elements = get_unique_elements(mset)
-    
-#    print Eref
+
+    print Eref
     print elements, len(elements)
 
     numel_performula = defaultdict(int)
@@ -99,4 +100,4 @@ if __name__ == "__main__":
         l = len(atoms.formula.split())
         numel_performula[l] += 1
     print numel_performula
-#        print atoms.formula, atoms.Eref
+        print atoms.formula, atoms.Eref
