@@ -3,6 +3,7 @@ import numpy as np
 # five fold cross validation
 # mset is sorted by Eref
 def get_testset(mset):
+    mset = mset[:len(mset)//5*5] 
     mtest = []
     i = 0
     while i < len(mset):
