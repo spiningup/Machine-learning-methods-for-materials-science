@@ -100,4 +100,4 @@ if __name__ == "__main__":
         l = len(atoms.formula.split())
         numel_performula[l] += 1
     print numel_performula
-        print atoms.formula, atoms.Eref
+    print atoms.formula, atoms.Eref
