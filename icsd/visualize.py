@@ -1,15 +1,19 @@
 import json
 import numpy as np
 from collections import defaultdict
+import operator
 from pylab import *
 from filterdb import *
 
 def get_elements_statistics(d):
     elnum = defaultdict(int)
     els = defaultdict(int)
+    natoms = defaultdict(int)
     for item in d.values():
         formula = item[0].replace("'",'').split()
         elnum[len(formula)] += 1
+        if item[2] == 0: print item
+        natoms[item[2]] += 1
 
         for el in formula:
             for i in el:
@@ -17,7 +21,7 @@ def get_elements_statistics(d):
                     el = el.replace(i, "")
             els[el] += 1
 
-    return elnum, els
+    return elnum, els, natoms
 
 def plot_dict(a):
     X = np.arange(len(a))
@@ -29,15 +33,16 @@ def plot_dict(a):
 
 
 if __name__ == "__main__":
-    d = json.load(open('icsd_notinDB.json', 'r'))
-    elnum, els = get_elements_statistics(d)
+    d = json.load(open('icsd.json', 'r'))
+    elnum, els, natoms  = get_elements_statistics(d)
+    print len(d)
     print elnum
-    print els
+    print sorted(els.iteritems(), key=operator.itemgetter(1))
+    print natoms
 #    d = filter_nel(d, 1)
 
-    for el in els.keys():
-        dnew = filter_elements(d, el)
-
-        elnumnew, elsnew = get_elements_statistics(dnew)
-        print el, elnumnew
+#    for el in els.keys():
+#        dnew = filter_elements(d, el)
+#        elnumnew, elsnew = get_elements_statistics(dnew)
+#        print el, elnumnew
 #        plot_dict(elnumnew)
