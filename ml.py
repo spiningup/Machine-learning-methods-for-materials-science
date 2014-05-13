@@ -7,11 +7,12 @@ from sklearn.svm import SVR, NuSVR
 from collections import Counter
 import numpy as np
 import pickle
+import os
 from pylab import *
 from ase.units import Bohr
 from read_json import attribute_tolist, read_json
 from split_dataset import *
-from atomic_constants import pauling, radius, row, col, Eatom, Eion, Emadelung, charge, mus, atomic_number
+from atomic_constants import pauling, radius, row, col, Eatom, Eion, Emadelung, charge, mus, atomic_number, atomic_weight
 
 
 def get_dpair():
@@ -156,7 +157,7 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
     Etrain = np.array(attribute_tolist(mtrain, attr="Eref"))
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
 
-    ndim = 10
+    ndim = 9
     if (elmap and elmethod): ndim += len(elmap)
     Xtrain = np.zeros((len(Etrain), ndim)); Xcross = np.zeros((len(Ecross), ndim))
     for mset in (mtrain, mcross):
@@ -164,7 +165,7 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
             nn = atoms.natoms
             elecneg = []
             rad = []
-            mass = atoms.masses
+            mass = atoms.masses 
             rowlist = []
             collist = []
             Eionization = []
@@ -177,8 +178,12 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
                 Eionization.append(Eion[name])
                 Eatomicnum.append(atomic_number[name])
 
-            val = [atoms.exptvol, np.mean(rad), np.mean(elecneg), np.mean(mass), np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg),
+            val = [#atoms.exptvol, 
+                   np.mean(rad), np.mean(elecneg), np.mean(mass), np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg),
                    np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization)]
+#            val = [np.mean(elecneg), np.mean(mass), np.max(elecneg)-np.min(elecneg),  np.max(rowlist)-np.min(rowlist), 
+#                   np.max(collist)-np.min(collist)]
+#            print atoms.names, "%6.2f, %6.2f, %6.2f, %6.2f, %6.2f" %(val[0], val[1], val[2], val[3], val[4])
 #                   np.max(Eatomicnum)-np.min(Eatomicnum)] 
 #, np.max(Eionization)-np.min(Eionization), #np.mean(rowlist), np.mean(collist), 
 #                   atoms.avg_cord]#, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
@@ -221,6 +226,7 @@ def feature_normalization(scaling, Xtrain, Xcross):
         if scaling == 1: 
             xmean = np.mean(Xtrain[:,i])
             xstd = np.std(Xtrain[:,i])
+            if xstd == 0.: continue
             Xtrain[:,i] = (Xtrain[:, i] - xmean) / xstd
             Xcross[:,i] = (Xcross[:, i] - xmean) / xstd
         elif scaling == 2:
@@ -247,13 +253,15 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
     def train(featurelist):
         Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling, featurelist, elmap, elmethod)
     #    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
-        
+
         n_neighbors = n_ngh
         model = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=metric)
         model.fit(Xtrain, Etrain)
         
         Epredict = model.predict(Xcross)
-        #np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
+
+#        plot_prediction(mcross, Epredict, Ecross)
+
         return np.nansum(np.abs(Epredict - Ecross)) / len(Ecross)
 
     def select_feature(flist, minerror):
@@ -278,7 +286,7 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
     minerror = train(featurelist)
     
     if selectf:
-        featurelist = range(10)
+        featurelist = range(5)
         flist, minerror = select_feature(featurelist, minerror)
         print flist, minerror
         
@@ -287,64 +295,56 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
 def plot_prediction(mset, Epredict, Ecross):
     for i, atoms in enumerate(mset):
         plot(Epredict[i], Ecross[i], '+r')
-        if np.abs(Epredict[i] - Ecross[i]) > 0.15:
-            print atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i])
+        if len(Epredict) < 40: #np.abs(Epredict[i] - Ecross[i]) > 0.15:
+            print "%s, %6.2f, %6.2f, %6.2f"%(atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i]))
             text(Epredict[i], Ecross[i], atoms.formula)
     plot(Ecross, Ecross, '-k')
     show()
 
 
-def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, kernel="laplacian", elmap=None, elmethod=None):
+def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, kernel="laplacian", 
+                   elmap=None, elmethod=None, loadalpha=False, alphanum=None):
     Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, elmap=elmap, elmethod=elmethod)
 
-    K_ij = np.zeros((len(Etrain), len(Etrain)))
-    for i in range(len(Etrain)):
-        for j in range(i+1, len(Etrain)):
-            d = Xtrain[i] - Xtrain[j]
-            dd = np.sqrt(np.inner(d, d))
-            K_ij[i, j] = get_kernel(dd, sigma, kernel=kernel)
-            K_ij[j, i] = K_ij[i, j]
-        K_ij[i, i] = 1 + lamda
-    alpha = np.dot(np.linalg.inv(K_ij), Etrain) # not sure about the order
-    
-#    def get_MAE(mset, X, E):
-#        MAE = 0
-#        Epredict = []
-#        for i in range(len(E)):
-#            Eest = 0 # estimation for set number i
-#            for j in range(len(Etrain)):
-#                d = Xtrain[j] - X[i]
-#                dd = np.sqrt(np.inner(d, d))
-#                Eest += alpha[j] * get_kernel(dd, sigma, kernel=kernel)
-#            Epredict.append(Eest)
-#            MAE += np.abs(Eest - E[i])
-#
-#        plot_prediction(mset, Epredict, E)
-#        return MAE / len(E)
+
+    if loadalpha:
+        if alphanum is None:
+            alpha = pickle.load(open('alpha.pkl', 'r'))
+        else:
+            alpha = pickle.load(open('alpha_%s.pkl'%(alphanum), 'r'))
+    else:
+        K_ij = np.zeros((len(Etrain), len(Etrain)))
+        for i in range(len(Etrain)):
+            for j in range(i+1, len(Etrain)):
+                d = Xtrain[i] - Xtrain[j]
+                dd = np.sqrt(np.inner(d, d))
+                K_ij[i, j] = get_kernel(dd, sigma, kernel=kernel)
+                K_ij[j, i] = K_ij[i, j]
+            K_ij[i, i] = 1 + lamda
+        alpha = np.dot(np.linalg.inv(K_ij), Etrain) # not sure about the order
+        if alphanum is None:
+            pickle.dump(alpha, open('alpha.pkl', 'wb'), -1)
+        else:
+            pickle.dump(alpha, open('alpha_%s.pkl'%(alphanum), 'wb'), -1)
 
     def get_MAE(mset, X, E):
         MAE = 0
         Epredict = []
         for i in range(len(E)):
-            Eest = [] # estimation for set number i
+            Eest = 0 # estimation for set number i
             for j in range(len(Etrain)):
                 d = Xtrain[j] - X[i]
                 dd = np.sqrt(np.inner(d, d))
-                Eest.append(alpha[j] * get_kernel(dd, sigma, kernel=kernel))
+                Eest += alpha[j] * get_kernel(dd, sigma, kernel=kernel)
+            Epredict.append(Eest)
+            MAE += np.abs(Eest - E[i])
 
-            if np.abs(np.sum(Eest) - E[i]) > 0.1:
-                print mcross[i].formula, np.abs(np.sum(Eest) - E[i])
-                hist(Eest, 50)
-                show()
+#        plot_prediction(mset, Epredict, E)
+        return MAE / len(E), Epredict
+#    restrain = get_MAE(mtrain, Xtrain, Etrain)
+    rescross = get_MAE(mcross, Xcross, Ecross)
 
-            Epredict.append(np.sum(Eest))
-            MAE += np.abs(np.sum(Eest) - E[i])
-
-        return MAE / len(E)
-
-    return None, get_MAE(mcross, Xcross, Ecross)
-#    return get_MAE(mtrain, Xtrain, Etrain), get_MAE(mcross, Xcross, Ecross)
-
+    return None, rescross[0], rescross[1]
 
 def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
     if kernel is None:
