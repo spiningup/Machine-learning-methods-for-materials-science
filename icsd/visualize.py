@@ -9,10 +9,10 @@ def get_elements_statistics(d):
     elnum = defaultdict(int)
     els = defaultdict(int)
     natoms = defaultdict(int)
-    for item in d.values():
+    for key, item in d.items():
         formula = item[0].replace("'",'').split()
         elnum[len(formula)] += 1
-        if item[2] == 0: print item
+        if item[2] == 0: print key, item
         natoms[item[2]] += 1
 
         for el in formula:
@@ -34,11 +34,15 @@ def plot_dict(a):
 
 if __name__ == "__main__":
     d = json.load(open('icsd.json', 'r'))
+    d = filter_natoms(d, nmax=10)
     elnum, els, natoms  = get_elements_statistics(d)
     print len(d)
     print elnum
     print sorted(els.iteritems(), key=operator.itemgetter(1))
-    print natoms
+    print sorted(natoms.iteritems(), key=operator.itemgetter(0))
+    bar(natoms.keys(), natoms.values())
+    show()
+
 #    d = filter_nel(d, 1)
 
 #    for el in els.keys():
