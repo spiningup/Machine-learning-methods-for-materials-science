@@ -29,13 +29,16 @@ for cif in allcifs:
             if os.path.isfile('%s/%s/%s/pbserr'%(jobdir,icsdno, subdir)):
                 err = commands.getoutput('tail -1 %s/%s/%s/pbserr'%(jobdir,icsdno, subdir))
                 if "KeyError" in err:
-                    errors["KeyError"].append([icsdno, err])
+                    errors["KeyError"].append([icsdno, subdir, err])
                 elif "job killed" in err:
-                    errors["JobKilled"].append([icsdno, err])
+                    err2 = commands.getoutput("grep -B 1 'F=' %s/%s/%s/relax_cellshape/*/OSZICAR"%(jobdir, icsdno, subdir)).split('\n')
+                    err3 = [j.split()[1] for j in err2 if "RMM" in j]
+                    errors["JobKilled"].append([icsdno, subdir, err3])
                 elif err == '':
-                    errors["Other"].append([icsdno, commands.getoutput('grep failed %s/%s/relax_cellshape/0/stdout'%(icsdno, subdir)).split('\n')[0]])
+                    err2 = commands.getoutput('grep failed %s/%s/%s/relax_cellshape/0/stdout'%(jobdir, icsdno, subdir)).split('\n')[0]
+                    errors["Other"].append([icsdno, subdir, err2])
                 elif "Could not converge" in err:
-                    errors["CantConverge"].append([icsdno, err])
+                    errors["CantConverge"].append([icsdno, subdir, err])
                 else:
                     print icsdno, err
             else:
@@ -47,7 +50,5 @@ for key, item in errors.items():
     for i in item:
         print key, i
 
-icsdkilled =  ["icsd_%s.cif"%(i[0]) for i in errors["JobKilled"]]
-notcalc =  ["icsd_%s.cif"%(i[0]) for i in errors["NotCalculated"]]
-#json.dump(icsdkilled, open("icsdkilled.json", "w"))
-#json.dump(notcalc, open("remained.json", "w"))
+
+json.dump(errors, open("errors.json", "w"))
