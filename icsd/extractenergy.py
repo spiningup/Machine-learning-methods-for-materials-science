@@ -21,8 +21,10 @@ for cif in allcifs:
         if a.success:
             E.append(a.total_energy.magnitude)
             dirs.append(subdir)
-            #print "%s/%s"%(icsdno,subdir), a.total_energy
-    if len(E) > 1:
+#            print "%6s/%20s"%(icsdno,subdir), a.total_energy
+    print icsdno, len(E)
+#    if len(E) > 0: print icsdno, min(E)
+    if 0:#len(E) > 1:
         minidx = np.argsort(E)[0]
         minE = min(E)
         minEdir = dirs[minidx]

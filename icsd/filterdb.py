@@ -109,9 +109,9 @@ if __name__ == "__main__":
         icsdstr = "{0:06d}".format(int(icsdno))
         d0.append(icsdstr)
 
-#    d = filter_disorder(d)
+    d = filter_disorder(d)
 #    d = filter_calculated(d, d0)
-#    json.dump(d, open("icsd.json", 'w'))
+    json.dump(d, open("icsd_includedcalced.json", 'w'))
     
     d = json.load(open('icsd.json', 'r'))
     for i in ([0, 10, 20, 30, 40, 50, 60, 70, 80, 90]):

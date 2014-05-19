@@ -3,7 +3,7 @@ import os
 import json
 from pylada import vasp
 
-jobdir = '/scratch/jyan/ML_natoms_10'
+jobdir = os.getcwd()
 
 allcifs =  commands.getoutput("ls %s/*.cif"%(jobdir)).split('\n')
 print "number of cif files", len(allcifs)
@@ -14,6 +14,7 @@ errors = {"KeyError": [],
           "CantConverge": [],
           "Other": [],
           "NotCalculated": []}
+#fsuc = open('upload-1.txt', 'w')
 
 for cif in allcifs:
     icsdno = cif[-10:-4]
@@ -21,11 +22,14 @@ for cif in allcifs:
         errors["NotCalculated"].append([icsdno, None])
         continue
     subdirs = os.listdir('%s/%s'%(jobdir, icsdno))
+
     for subdir in subdirs:
         a = vasp.Extract('%s/%s/%s'%(jobdir,icsdno, subdir))
         if a.success:
             n_success += 1
+#            print >> fsuc, "%s/%s/%s"%(jobdir, icsdno, subdir)
         else:
+            continue
             if os.path.isfile('%s/%s/%s/pbserr'%(jobdir,icsdno, subdir)):
                 err = commands.getoutput('tail -1 %s/%s/%s/pbserr'%(jobdir,icsdno, subdir))
                 if "KeyError" in err:
@@ -51,4 +55,4 @@ for key, item in errors.items():
         print key, i
 
 
-json.dump(errors, open("errors.json", "w"))
+#json.dump(errors, open("errors.json", "w"))

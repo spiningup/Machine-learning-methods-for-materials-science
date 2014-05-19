@@ -29,12 +29,12 @@ def plot_dict(a):
     xticks(X, a.keys())
     ymax = max(a.values()) + 20
     ylim(0, ymax)
-    show()
+#    show()
 
 
 if __name__ == "__main__":
-    d = json.load(open('icsd.json', 'r'))
-    d = filter_natoms(d, nmax=10)
+    d = json.load(open('icsd_includedcalced.json', 'r'))
+#    d = filter_natoms(d, nmax=10)
     elnum, els, natoms  = get_elements_statistics(d)
     print len(d)
     print elnum
