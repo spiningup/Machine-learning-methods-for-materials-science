@@ -4,8 +4,8 @@ import shutil
 import os
 import commands
 
-natoms = 20
-nminatoms = 10
+natoms = 30
+nminatoms = 20
 
 d = json.load(open('icsd.json', 'r'))
 dnew = formula_with_multiple_spacegroups(d)    

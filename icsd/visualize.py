@@ -35,6 +35,8 @@ def plot_dict(a):
 if __name__ == "__main__":
     d = json.load(open('icsd_includedcalced.json', 'r'))
 #    d = filter_natoms(d, nmax=10)
+    for el in (['D', 'O', 'H', 'Re', 'Ta', 'Cs', 'Tl', 'Os', 'Tc']):
+        d = filter_elements(d, el, incl=False)
     elnum, els, natoms  = get_elements_statistics(d)
     print len(d)
     print elnum
