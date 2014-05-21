@@ -29,7 +29,7 @@ for cif in allcifs:
             n_success += 1
 #            print >> fsuc, "%s/%s/%s"%(jobdir, icsdno, subdir)
         else:
-            continue
+#            continue
             if os.path.isfile('%s/%s/%s/pbserr'%(jobdir,icsdno, subdir)):
                 err = commands.getoutput('tail -1 %s/%s/%s/pbserr'%(jobdir,icsdno, subdir))
                 if "KeyError" in err:
@@ -40,6 +40,8 @@ for cif in allcifs:
                     errors["JobKilled"].append([icsdno, subdir, err3])
                 elif err == '':
                     err2 = commands.getoutput('grep failed %s/%s/%s/relax_cellshape/0/stdout'%(jobdir, icsdno, subdir)).split('\n')[0]
+                    if err2 == '':
+                        err2 = commands.getoutput('grep ERROR %s/%s/%s/relax_cellshape/*/stdout'%(jobdir, icsdno, subdir)).split('\n')[0].split(':')[1:]
                     errors["Other"].append([icsdno, subdir, err2])
                 elif "Could not converge" in err:
                     errors["CantConverge"].append([icsdno, subdir, err])
