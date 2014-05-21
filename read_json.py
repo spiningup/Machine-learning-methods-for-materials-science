@@ -31,13 +31,20 @@ def read_json(filename = "data.json", energytype="atomization"):
 #        if "Y" in atoms.names: continue
 
         # ignore formula already in dataset
-#        formula = " ".join(sorted(atoms.formula.split()))
-#        atoms.formula = formula
-        formula = atoms.formula
+        formula = " ".join(sorted(atoms.formula.split()))
+        atoms.formula = formula
+#        formula = atoms.formula
         if formula not in formulas: 
             formulas.append(formula)
         else:
             continue
+
+#        anions = ['F', 'Cl', 'O', 'S', 'Se', 'Br', 'P', 'N']
+#        found = 0
+#        for el in anions:
+#            if el in atoms.names:
+#                found += 1
+#        if found >= 2: continue
 
         if "atommasses_amu" in item.keys():
             volerror = np.abs(atoms.calcvol - atoms.exptvol) / atoms.exptvol 
@@ -86,6 +93,12 @@ def get_elements_map(mset):
     for i, el in enumerate(elements):
         elmap[el] = i
     return elmap
+
+def get_nelements_per_cell(mset):
+    nel = defaultdict(int)
+    for i in mset:
+        nel[len(i.formula.split())] += 1
+    return nel
 
 if __name__ == "__main__":
     mset = read_json("data.json")
