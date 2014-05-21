@@ -30,7 +30,11 @@ class Atoms:
                 self.bandgap = item["bandgapindirect"]
             for name in self.names:
                 if energytype == "atomization":
-                    self.Eref -= Eatom[name] / self.natoms
+                    if name not in Eatom.keys():
+                        self.Eref = None
+                        break
+                    else:
+                        self.Eref -= Eatom[name] / self.natoms
                 elif energytype == "formation":
                     if name not in mus.keys(): 
                         self.Eref = None
@@ -42,11 +46,11 @@ class Atoms:
             icsdstr = "{0:06d}".format(int(item["icsdnum"]))
             self.icsdno = icsdstr
             self.exptvol = Exptvol[self.icsdno][6]
-            self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
-            self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
-            self.cord = cord[self.icsdno]
-            self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
-            self.coulomb2 = coulomb["1/d"][self.icsdno]
+#            self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
+#            self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
+#            self.cord = cord[self.icsdno]
+#            self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
+#            self.coulomb2 = coulomb["1/d"][self.icsdno]
     
             if 0:
                 # get stuff not in json file
