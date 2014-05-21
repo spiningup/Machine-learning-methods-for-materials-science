@@ -1,6 +1,6 @@
 from pylab import *
 from matplotlib.ticker import FuncFormatter
-from read_json import attribute_tolist, get_unique_elements
+from read_json import attribute_tolist, get_unique_elements, get_nelements_per_cell
 
 def to_percent(y, position):
     # Ignore the passed in position. This has the effect of scaling the default
@@ -43,8 +43,7 @@ def plot_error_in_volume(mset):
     plot_all(volerror,"Error in volume (%) : (Vcalc - Vexpt) / Vexpt * 100")
 
 
-def plot_elements(mset):
-    a = get_unique_elements(mset)
+def plot_dict(a):
     X = np.arange(len(a))
     bar(X, a.values(), align="center", width=0.5)
     xticks(X, a.keys())
@@ -52,11 +51,11 @@ def plot_elements(mset):
     ylim(0, ymax)
     show()
 
-
 if __name__ == "__main__":
     from read_json import read_json
-    mset = read_json("data.json")
+    mset = read_json("include_ML_natoms_10/data.json")
     plot_error_in_volume(mset)
     plot_Eref(mset)
     plot_natoms(mset)
-    plot_elements(mset)
+    plot_dict(get_unique_elements(mset))
+    plot_dict(get_nelements_per_cell(mset))
