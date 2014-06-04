@@ -27,7 +27,8 @@ maxrun = 5
 avgEpredict = np.zeros(11)
 for irun in range(maxrun):
     write_json(el1, el2)
-    mset = read_json("larger_data/data.json", energytype="formation")
+#    mset = read_json("include_ML_natoms_30/data.json", energytype="formation")
+    mset = read_json("tests/data.json", energytype="formation")
     mcross, mtrain = get_testset(mset)
     mcross = read_json("%s%s.json"%(el1, el2), energytype="formation")
     #mtest, mset = get_testset(mset)
@@ -47,6 +48,7 @@ for irun in range(maxrun):
 #        print >> f, Epredict[i]
 #    f.close()
 
+    print len(Epredict)
     for i in range(1, 10):
         Epredict[i] = Epredict[i] - Epredict[-1]*i*0.1 - Epredict[0]*(10-i)*0.1
     Epredict[0] = Epredict[-1] = 0

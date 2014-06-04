@@ -62,7 +62,7 @@ class Atoms:
             self.calcvol = float(item["finalvolume_ang3"]) / self.natoms #self.ncell
 
         else:
-            self.formula = item["formula"]
+            formula = item["formula"]
             if "gap" in item.keys():
                 self.Eref = item["gap"]
             elif "FERE" in item.keys():
@@ -70,13 +70,19 @@ class Atoms:
             else:
                 self.Eref = None
             self.names = []
-            for i in self.formula.split():
+            for i in formula.split():
                 if i.isdigit():
                     self.names += [self.names[-1],] * (int(i)-1)
                 else:
                     self.names.append(i)
             self.masses = [atomic_weight[name] for name in self.names]
             self.natoms = len(self.names)
+            self.formula = ""
+            for i in formula.split():
+                if i.isdigit():
+                    self.formula += "%s "%(i)
+                else:
+                    self.formula += i
 
             # the energies are by default formation energies 
             if energytype == "atomization":
