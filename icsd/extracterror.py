@@ -5,7 +5,7 @@ from pylada import vasp
 
 jobdir = os.getcwd()
 
-allcifs =  commands.getoutput("ls %s/*.cif"%(jobdir)).split('\n')
+allcifs =  commands.getoutput("ls %s/cifs/*.cif"%(jobdir)).split('\n')
 print "number of cif files", len(allcifs)
 
 n_success = 0
@@ -14,10 +14,10 @@ errors = {"KeyError": [],
           "CantConverge": [],
           "Other": [],
           "NotCalculated": []}
-#fsuc = open('upload-1.txt', 'w')
+fsuc = open('upload-1.txt', 'w')
 
 for cif in allcifs:
-    icsdno = cif[-10:-4]
+    icsdno = "icsd_" + cif[-10:-4]
     if not os.path.exists('%s/%s'%(jobdir, icsdno)):
         errors["NotCalculated"].append([icsdno, None])
         continue
@@ -27,7 +27,7 @@ for cif in allcifs:
         a = vasp.Extract('%s/%s/%s'%(jobdir,icsdno, subdir))
         if a.success:
             n_success += 1
-#            print >> fsuc, "%s/%s/%s"%(jobdir, icsdno, subdir)
+            print >> fsuc, "%s/%s/%s"%(jobdir, icsdno, subdir)
         else:
 #            continue
             if os.path.isfile('%s/%s/%s/pbserr'%(jobdir,icsdno, subdir)):
@@ -57,4 +57,4 @@ for key, item in errors.items():
         print key, i
 
 
-#json.dump(errors, open("errors.json", "w"))
+json.dump(errors, open("errors.json", "w"))
