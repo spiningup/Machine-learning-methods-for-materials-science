@@ -46,11 +46,11 @@ class Atoms:
             icsdstr = "{0:06d}".format(int(item["icsdnum"]))
             self.icsdno = icsdstr
             self.exptvol = Exptvol[self.icsdno][6]
-#            self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
-#            self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
-#            self.cord = cord[self.icsdno]
-#            self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
-#            self.coulomb2 = coulomb["1/d"][self.icsdno]
+            self.latt_a, self.latt_b, self.latt_c = np.sort(Exptvol[self.icsdno][0:3])
+            self.alpha, self.beta, self.gamma = Exptvol[self.icsdno][3:6]
+            self.cord = cord[self.icsdno]
+            self.coulomb1 = coulomb["ZiZj/d"][self.icsdno]
+            self.coulomb2 = coulomb["1/d"][self.icsdno]
     
             if 0:
                 # get stuff not in json file

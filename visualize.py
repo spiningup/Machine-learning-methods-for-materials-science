@@ -53,7 +53,9 @@ def plot_dict(a):
 
 if __name__ == "__main__":
     from read_json import read_json
-    mset = read_json("include_ML_natoms_10/data.json")
+    import sys
+    mset = read_json(sys.argv[1], energytype="formation")
+#    mset = read_json("include_ML_natoms_10/data.json")
     plot_error_in_volume(mset)
     plot_Eref(mset)
     plot_natoms(mset)
