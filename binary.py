@@ -35,7 +35,7 @@ for irun in range(maxrun):
     elmap = get_elements_map(mset)
 
     result = krr_regression(mtrain, mcross, sigma, lamda, kernel=kernel, elmap=elmap, elmethod=elmethod,
-                            loadalpha=True, alphanum=irun)
+                            loadalpha=False, alphanum=irun)
     MAEtrain.append(result[0])
     MAEcross.append(result[1])
     Epredict = result[2]
