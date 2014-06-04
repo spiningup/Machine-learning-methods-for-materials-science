@@ -5,12 +5,12 @@ from pylada import vasp
 
 jobdir = os.getcwd()
 
-allcifs =  commands.getoutput("ls %s/*.cif"%(jobdir)).split('\n')
+allcifs =  commands.getoutput("ls %s/cifs/*.cif"%(jobdir)).split('\n')
 print "number of cif files", len(allcifs)
 
 timing = []
 for cif in allcifs:
-    icsdno = cif[-10:-4]
+    icsdno = "icsd_" + cif[-10:-4]
     if not os.path.exists('%s/%s'%(jobdir, icsdno)):
         continue
     subdirs = os.listdir('%s/%s'%(jobdir, icsdno))
