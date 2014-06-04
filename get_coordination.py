@@ -12,8 +12,7 @@ coulomb = {"ZiZj/d": {},
            "1/d": {}}
 for item in d:
     icsdstr = "{0:06d}".format(int(item["icsdnum"]))
-    atoms = read.icsd_cif_a("structures/icsd_%s.cif"%(icsdstr)) 
-
+    atoms = read.icsd_cif_a("/scratch/jyan/allcifs/icsd_%s.cif"%(icsdstr)) 
     ngh = defaultdict(float)
     uniqueatom = defaultdict(int)
     coul1 = defaultdict(float)
