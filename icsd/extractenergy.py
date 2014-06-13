@@ -25,7 +25,6 @@ for cif in allcifs:
     if "non-magnetic" not in dirs: continue
 #            print "%6s/%20s"%(icsdno,subdir), a.total_energy
 #    print icsdno, len(E)
-#    if len(E) > 0: print icsdno, min(E)
     if len(E) > 1:
         minidx = np.argsort(E)[0]
         minE = min(E)

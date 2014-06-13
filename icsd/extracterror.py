@@ -18,6 +18,7 @@ fsuc = open('upload-1.txt', 'w')
 
 for cif in allcifs:
     icsdno = "icsd_" + cif[-10:-4]
+#    icsdno = cif[-10:-4]
     if not os.path.exists('%s/%s'%(jobdir, icsdno)):
         errors["NotCalculated"].append([icsdno, None])
         continue
@@ -46,7 +47,7 @@ for cif in allcifs:
                 elif "Could not converge" in err:
                     errors["CantConverge"].append([icsdno, subdir, err])
                 else:
-                    print icsdno, err
+                    print icsdno, subdir, err
             else:
                 pass
 
