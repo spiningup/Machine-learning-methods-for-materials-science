@@ -21,7 +21,7 @@ class Atoms:
             self.positions = np.array(item["finalcartposmat"])
             self.natoms = int(item["numatom"])
             self.cell = np.array(item["finalbasismat"])
-            self.formula = item["formula"]
+            self.formula = item["sortedformula"]
             self.ncell = self.get_number_of_primitive_cell(item["atommasses_amu"])
             if energytype == "atomization" or energytype == "formation":
                 self.Eref = float(item["energyperatom"])

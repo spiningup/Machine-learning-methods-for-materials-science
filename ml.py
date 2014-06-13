@@ -157,7 +157,7 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
     Etrain = np.array(attribute_tolist(mtrain, attr="Eref"))
     Ecross = np.array(attribute_tolist(mcross, attr="Eref"))
 
-    ndim = 9
+    ndim = 13
     if (elmap and elmethod): ndim += len(elmap)
     Xtrain = np.zeros((len(Etrain), ndim)); Xcross = np.zeros((len(Ecross), ndim))
     for mset in (mtrain, mcross):
@@ -170,36 +170,47 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
             collist = []
             Eionization = []
             Eatomicnum = []
+            elecnegmul = 1.
             for ii, name in enumerate(atoms.names):
                 elecneg.append(pauling[name])
+                elecnegmul *= pauling[name]
                 rad.append(radius[name])
                 rowlist.append(row[name])
                 collist.append(col[name])
                 Eionization.append(Eion[name])
                 Eatomicnum.append(atomic_number[name])
 
+#            val = [#atoms.exptvol, 
+#                   np.mean(rad), np.mean(elecneg), np.mean(mass), np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg),
+#                   np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization)]
+
             val = [#atoms.exptvol, 
-                   np.mean(rad), np.mean(elecneg), np.mean(mass), np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg),
-                   np.max(mass)-np.min(mass), np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), np.mean(Eionization)]
-#            val = [np.mean(elecneg), np.mean(mass), np.max(elecneg)-np.min(elecneg),  np.max(rowlist)-np.min(rowlist), 
-#                   np.max(collist)-np.min(collist)]
-#            print atoms.names, "%6.2f, %6.2f, %6.2f, %6.2f, %6.2f" %(val[0], val[1], val[2], val[3], val[4])
-#                   np.max(Eatomicnum)-np.min(Eatomicnum)] 
-#, np.max(Eionization)-np.min(Eionization), #np.mean(rowlist), np.mean(collist), 
-#                   atoms.avg_cord]#, atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
+                   np.mean(rad), np.mean(elecneg), np.mean(mass),
+                   np.mean(rowlist), np.mean(collist),
+                   np.max(rad)-np.min(rad), np.max(elecneg)-np.min(elecneg), np.max(mass)-np.min(mass), 
+                   np.max(rowlist)-np.min(rowlist), np.max(collist)-np.min(collist), 
+                   np.mean(Eatomicnum), np.max(Eatomicnum) - np.min(Eatomicnum),
+                   np.mean(Eionization)]
+#                   elecnegmul**(1./nn), np.mean(atoms.Z), np.max(atoms.Z) - np.min(atoms.Z),
+#                   atoms.latt_a, atoms.latt_b, atoms.latt_c, atoms.alpha, atoms.beta, atoms.gamma]
+
 
             if (elmap and elmethod):
                 elval = [0,] * len(elmap)
+                elval2 = [0,] * len(elmap)
+                elval3 = [0,] * len(elmap)
                 uniqueel = Counter(atoms.names) # get unqiue elements
                 for k1, v1 in uniqueel.items(): # propotion of each elements in cell
                     if elmethod == "composition":
                         elval[elmap[k1]] = float(v1) / nn # pauling[k1] / nn gives exactly the same name
+                        elval2[elmap[k1]] = radius[k1]  # pauling[k1] / nn gives exactly the same name
+                        elval3[elmap[k1]] = pauling[k1]  # pauling[k1] / nn gives exactly the same name
                     elif elmethod == "constant":
                         elval[elmap[k1]] = 1./ nn 
                     elif elmethod == "coordination":
                         elval[elmap[k1]] = atoms.cord[k1]
                     elif elmethod == "inverse_cord":
-                        elval[elmap[k1]] = float(v1) / nn /atoms.cord[k1]
+                        elval[elmap[k1]] = 1. /atoms.cord[k1]
                     elif elmethod == "coulomb_ZiZj/d":
                         elval[elmap[k1]] = atoms.coulomb1[k1]
                     elif elmethod == "coulomb_1/d":
@@ -207,17 +218,18 @@ def get_X(mtrain, mcross, scaling=1, featurelist="all", elmap=None, elmethod=Non
                     else:
                         "not implemented"
                         XX
-                val += elval
+                val += elval #+ elval2 + elval3
 
             if mset == mtrain:
                 Xtrain[i] = val
             elif mset == mcross:
                 Xcross[i] = val
 
+
     feature_normalization(scaling, Xtrain, Xcross)
     if featurelist != "all":
         Xtrain, Xcross = feature_selection(featurelist, Xtrain, Xcross)
-        
+
     return Xtrain, Xcross, Etrain, Ecross
 
 def feature_normalization(scaling, Xtrain, Xcross):                
@@ -252,12 +264,12 @@ def feature_selection(featurelist, Xtrain, Xcross):
 def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None, scaling=1, weights="distance", metric="minkowski", selectf=False):
     def train(featurelist):
         Xtrain, Xcross, Etrain, Ecross = get_X(mtrain, mcross, scaling, featurelist, elmap, elmethod)
-    #    Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
+#        Xtrain, Xcross = pca_decomposition(Xtrain, Xcross, n_components=7, kernel=kernel)
 
         n_neighbors = n_ngh
         model = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=metric)
         model.fit(Xtrain, Etrain)
-        
+
         Epredict = model.predict(Xcross)
 
 #        plot_prediction(mcross, Epredict, Ecross)
@@ -286,7 +298,7 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
     minerror = train(featurelist)
     
     if selectf:
-        featurelist = range(5)
+        featurelist = range(10)
         flist, minerror = select_feature(featurelist, minerror)
         print flist, minerror
         
@@ -295,10 +307,12 @@ def knn_regression(mtrain, mcross, n_ngh, elmap=None, elmethod=None, kernel=None
 def plot_prediction(mset, Epredict, Ecross):
     for i, atoms in enumerate(mset):
         plot(Epredict[i], Ecross[i], '+r')
-        if len(Epredict) < 40: #np.abs(Epredict[i] - Ecross[i]) > 0.15:
+        if np.abs(Epredict[i] - Ecross[i]) > 0.5:
             print "%s, %6.2f, %6.2f, %6.2f"%(atoms.formula, Epredict[i], Ecross[i], np.abs(Epredict[i] - Ecross[i]))
-            text(Epredict[i], Ecross[i], atoms.formula)
+            #text(Epredict[i], Ecross[i], atoms.formula)
     plot(Ecross, Ecross, '-k')
+    xlabel('$E_{ML} (\mathrm{eV})$', fontsize=22)
+    ylabel('$E_{DFT} (\mathrm{eV})$', fontsize=22)
     show()
 
 
@@ -336,15 +350,16 @@ def krr_regression(mtrain, mcross, sigma=50, lamda=0.01, kernel="laplacian",
                 d = Xtrain[j] - X[i]
                 dd = np.sqrt(np.inner(d, d))
                 Eest += alpha[j] * get_kernel(dd, sigma, kernel=kernel)
+                
             Epredict.append(Eest)
             MAE += np.abs(Eest - E[i])
 
 #        plot_prediction(mset, Epredict, E)
         return MAE / len(E), Epredict
-#    restrain = get_MAE(mtrain, Xtrain, Etrain)
+    restrain = get_MAE(mtrain, Xtrain, Etrain)[0]
     rescross = get_MAE(mcross, Xcross, Ecross)
 
-    return None, rescross[0], rescross[1]
+    return restrain, rescross[0], rescross[1]
 
 def pca_decomposition(Xtrain, Xcross, n_components=7, kernel=None):
     if kernel is None:

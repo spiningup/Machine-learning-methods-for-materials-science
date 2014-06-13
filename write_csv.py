@@ -1,26 +1,31 @@
 import numpy as np
 from read_json import read_json
-from atomic_constants import pauling, radius, Eatom, Emadelung, charge, mus
+from atomic_constants import pauling, radius, Eatom, Emadelung, charge, mus, Eion
 
 def write_csv(strtype='general'):
     if strtype == "general":
         mset = read_json(filename = "data.json")
         f = open('general.csv', 'w')
-        print >> f, "(formula, std.mass, mean.mass, std.elecneg, mean.elecneg, calcvol, std.radius, mean.radius, Ecoh"
+        print >> f, "(E_DFT, mean.mass, mean.elecneg, mean.radius, mean.ionization"
         for atoms in mset:
             elecneg = []
             rad = []
+            Eionization = []
             for name in atoms.names:
                 elecneg.append(pauling[name])
                 rad.append(radius[name])
+                Eionization.append(Eion[name])
             sum_elecneg = np.sum(elecneg) / len(elecneg)
             std_elecneg = np.std(elecneg) 
             sum_mass = np.sum(atoms.masses) / len(atoms.masses)
             std_mass = np.std(atoms.masses)
             sum_radius = np.sum(rad) / len(rad)
             std_radius = np.std(rad)
-            print >>f, "%s, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.formula, std_mass, sum_mass, std_elecneg, sum_elecneg, 
-                                                                                     atoms.calcvol, std_radius, sum_radius, atoms.Eref)
+            sum_Eionization = np.mean(Eionization)
+            print >>f, "%6.2f, %6.2f, %6.2f, %6.2f, %6.2f"%(atoms.Eref, sum_mass, 
+                                                            sum_elecneg, 
+                                                            sum_radius, sum_Eionization)
+                                                                                    
     elif strtype == "RS":
         mset = read_json(filename = "data_RS.json")
         f = open('RS.csv', 'w')
