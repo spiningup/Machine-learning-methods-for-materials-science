@@ -1,5 +1,7 @@
 import numpy as np
 import sys
+import json
+import os
 from pylada import vasp
 from pylada.crystal import read
 
@@ -115,16 +117,19 @@ def get_Nb_by_nghs(idx, nk, eig, band_type="valence", n_neighbors=5):
 
 
 if __name__ == "__main__":
+
     dirname = sys.argv[1]
     calc = vasp.Extract(dirname)
     
     eig = calc.eigenvalues.magnitude
     fermi = calc.fermi_energy.magnitude
     nk = read_nk(dirname)
+    n_neighbors = 7
     
     # get vbm and cbm
     vbm=max([x for x in eig.flatten() if float(x)<=fermi])
     cbm=min([x for x in eig.flatten() if float(x) >fermi])
+    gap = cbm - vbm
     print "fermi", fermi, vbm, cbm
     
     # find bands cross vbm/cmb + window
@@ -141,8 +146,9 @@ if __name__ == "__main__":
     Nb_c = get_Nb(cbm_idx, bandtype="conduction")
     print "band degeneracy (vbm, cbm)", Nb_v, Nb_c
     
-    Nb2_v = get_Nb_by_nghs(vbm_idx, nk, eig, band_type="valence", n_neighbors=7)
-    Nb2_c = get_Nb_by_nghs(cbm_idx, nk, eig, band_type="conduction", n_neighbors=7)
+    print "nk, number of neighbors", nk, n_neighbors
+    Nb2_v = get_Nb_by_nghs(vbm_idx, nk, eig, band_type="valence", n_neighbors=n_neighbors)
+    Nb2_c = get_Nb_by_nghs(cbm_idx, nk, eig, band_type="conduction", n_neighbors=n_neighbors)
     print "band degeneracy by finding peaks", Nb2_v, Nb2_c
     
     # save to bxsf
