@@ -3,13 +3,14 @@ import sys
 import json
 import os
 from pylada import vasp
-from pylada.crystal import read
+#from pylada.crystal import read
+from ase.io import read
 
 def find_band_crossing(E, eig):
     nkpt, nbands = eig.shape
     bandidx = []
     for i in range(nbands):
-        if min(eig[:,i]) < E and max(eig[:, i]) > E:
+        if min(eig[:,i]) <= E and max(eig[:, i]) >= E:
             bandidx.append(i)
     return bandidx
 
@@ -75,7 +76,7 @@ def sort_eig(nk, eigold):
                 ik += 1
     return eig
 
-def get_Nb(idx, bandtype="valence"):
+def get_Nb(eig, idx, bandtype="valence"):
     Nb = 0
 
     for iband in idx:
@@ -89,72 +90,89 @@ def get_Nb(idx, bandtype="valence"):
     return Nb
     
 
-def get_neighbors(ix, iy, iz, iband, eig, n_neighbors=5):
+def get_neighbors(ix, iy, iz, iband, eig, nk, n_neighbors):
     nghs = []
+    E_nghs = []
     imin = - n_neighbors // 2
     imax = n_neighbors // 2 + 1
-    for i in range(imin, imax):
-        for j in range(imin, imax):
-            for k in range(imin, imax):
+    for i in range(imin[0], imax[0]):
+        for j in range(imin[1], imax[1]):
+            for k in range(imin[2], imax[2]):
                 if i == 0 and j == 0 and k == 0: continue
-                nghs.append(eig[(ix+i+nk[0])%nk[0], (iy+j+nk[1])%nk[1], (iz+k+nk[2])%nk[2], iband] )
+                nghs.append([(ix+i+nk[0])%nk[0], (iy+j+nk[1])%nk[1], (iz+k+nk[2])%nk[2]])
+                E_nghs.append(eig[(ix+i+nk[0])%nk[0], (iy+j+nk[1])%nk[1], (iz+k+nk[2])%nk[2], iband] )
 
-    return nghs
+    return nghs, E_nghs
 
-def get_Nb_by_nghs(idx, nk, eig, band_type="valence", n_neighbors=5):                
+def get_Nb_by_nghs(idx, nk, eig, energyrange, band_type="valence", fraction=0.5):                
     Nb = 0
+    n_neighbors = np.array([int(np.ceil(nk0 * fraction)) for nk0 in nk])
+    bminidx = []
     for iband in idx:
         for ix in range(nk[0]):
             for iy in range(nk[1]):
                 for iz in range(nk[2]):
-                    nghs = get_neighbors(ix, iy, iz, iband, eig, n_neighbors)
+                    if not (eig[ix, iy, iz, iband] <= energyrange[1] and eig[ix, iy, iz, iband] >= energyrange[0]): continue
+                    nghs, E_nghs = get_neighbors(ix, iy, iz, iband, eig, nk, n_neighbors)
                     if band_type == "valence":
-                        if np.all(eig[ix, iy, iz, iband] >= nghs): Nb += 1
+                        if np.all(eig[ix, iy, iz, iband] >= E_nghs): 
+                            Nb += 1; bminidx.append([ix,iy,iz,iband]); #print eig[ix,iy,iz,iband], min(E_nghs), max(E_nghs)
                     elif band_type == "conduction":
-                        if np.all(eig[ix, iy, iz, iband] <= nghs): Nb += 1
+                        if np.all(eig[ix, iy, iz, iband] <= E_nghs): 
+                            Nb += 1; bminidx.append([ix,iy,iz,iband]); #print eig[ix,iy,iz,iband], min(E_nghs), max(E_nghs)
                     else: XX
-    return Nb
+    return Nb, bminidx
 
+#def get_effective_mass()
 
 if __name__ == "__main__":
 
     dirname = sys.argv[1]
     calc = vasp.Extract(dirname)
     
-    eig = calc.eigenvalues.magnitude
+    eigenvalues = calc.eigenvalues.magnitude
     fermi = calc.fermi_energy.magnitude
+    nspin = calc.ispin
     nk = read_nk(dirname)
-    n_neighbors = 7
+    fraction = 0.5
+    n_neighbors = np.array([int(np.ceil(nk0 * fraction)) for nk0 in nk])
     
     # get vbm and cbm
-    vbm=max([x for x in eig.flatten() if float(x)<=fermi])
-    cbm=min([x for x in eig.flatten() if float(x) >fermi])
+    vbm=max([x for x in eigenvalues.flatten() if float(x)<=fermi])
+    cbm=min([x for x in eigenvalues.flatten() if float(x) >fermi])
     gap = cbm - vbm
-    print "fermi", fermi, vbm, cbm
-    
-    # find bands cross vbm/cmb + window
-    window = 0.1 # eV
-    vbm_idx = find_band_crossing(vbm-window, eig)
-    cbm_idx = find_band_crossing(cbm+window, eig)
-    print "Number of bands crossing (vbm, cbm)", len(vbm_idx), len(cbm_idx)
-    
-    # sort eig to eig[nkx, nky, nkz, nbands] with the correct kpoints order
-    eig = sort_eig(nk, eig)
-    
-    # get Nb
-    Nb_v = get_Nb(vbm_idx, bandtype="valence")
-    Nb_c = get_Nb(cbm_idx, bandtype="conduction")
-    print "band degeneracy (vbm, cbm)", Nb_v, Nb_c
-    
+    print "fermi", fermi, vbm, cbm, gap
+    print "nspin", nspin
     print "nk, number of neighbors", nk, n_neighbors
-    Nb2_v = get_Nb_by_nghs(vbm_idx, nk, eig, band_type="valence", n_neighbors=n_neighbors)
-    Nb2_c = get_Nb_by_nghs(cbm_idx, nk, eig, band_type="conduction", n_neighbors=n_neighbors)
-    print "band degeneracy by finding peaks", Nb2_v, Nb2_c
+
+    for ispin in range(nspin):
+        if nspin == 1:
+            eig = eigenvalues
+        else:
+            eig = eigenvalues[ispin,:,:]
     
-    # save to bxsf
-    atoms = read.poscar(dirname+"/CONTCAR")
-    Acell = atoms.cell
-    Bcell = np.linalg.inv(Acell.T)
-    
-    save_bxsf(dirname+'/vbm.bxsf', vbm-window, eig, vbm_idx, nk, Bcell)
-    save_bxsf(dirname+'/cbm.bxsf', cbm+window, eig, cbm_idx, nk, Bcell)
+        # find bands cross vbm/cmb + window
+        window = 0.1 # eV
+        vbm_idx = find_band_crossing(vbm-window, eig)
+        cbm_idx = find_band_crossing(cbm+window, eig)
+        print "Number of bands crossing (vbm, cbm)", len(vbm_idx), len(cbm_idx)
+        
+        # sort eig to eig[nkx, nky, nkz, nbands] with the correct kpoints order
+        eig = sort_eig(nk, eig)
+        
+        # get Nb
+        Nb_v = get_Nb(eig, vbm_idx, bandtype="valence")
+        Nb_c = get_Nb(eig, cbm_idx, bandtype="conduction")
+        print "band degeneracy (vbm, cbm)", Nb_v, Nb_c
+        
+        Nb2_v, bmaxidx = get_Nb_by_nghs(vbm_idx, nk, eig, (vbm-window, vbm), band_type="valence", fraction=fraction)
+        Nb2_c, bminidx  = get_Nb_by_nghs(cbm_idx, nk, eig, (cbm, cbm+window), band_type="conduction", fraction=fraction)
+        print "band degeneracy by finding peaks", Nb2_v, Nb2_c, bmaxidx, bminidx
+        
+        # save to bxsf
+        atoms = read(dirname+"/CONTCAR")
+        Acell = atoms.cell
+        Bcell = np.linalg.inv(Acell)
+        
+        save_bxsf(dirname+'/vbm%s.bxsf'%(ispin), vbm-window, eig, vbm_idx, nk, Bcell)
+        save_bxsf(dirname+'/cbm%s.bxsf'%(ispin), cbm+window, eig, cbm_idx, nk, Bcell)
